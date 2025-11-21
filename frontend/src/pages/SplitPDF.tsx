@@ -16,6 +16,8 @@ const SplitPDF = () => {
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadFileName, setDownloadFileName] = useState<string>('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleFileSelect = (file: File) => {
@@ -86,29 +88,19 @@ const SplitPDF = () => {
     try {
       const blob = await pdfAPI.split(selectedFile, parsedRanges);
       
+      // Create download URL and store it
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
       const baseName = selectedFile.name.replace(/\.[^/.]+$/, '');
-      a.download = `${baseName}_split.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const fileName = `${baseName}_split.pdf`;
+      
+      setDownloadUrl(url);
+      setDownloadFileName(fileName);
+      setError('');
 
       // Track usage for guest users
       if (!isAuthenticated) {
         incrementUsage();
       }
-
-      // Show success message
-      setError('');
-      alert('PDF split successfully! The selected pages have been combined into a single PDF file.');
-      
-      // Optionally reset
-      // setSelectedFile(null);
-      // setPdfUrl(null);
-      // setPageRanges('');
     } catch (err: any) {
       console.error('Split error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to split PDF. Please try again.';
@@ -118,14 +110,17 @@ const SplitPDF = () => {
     }
   };
 
-  // Cleanup object URL on unmount
+  // Cleanup object URLs on unmount
   useEffect(() => {
     return () => {
       if (pdfUrl) {
         URL.revokeObjectURL(pdfUrl);
       }
+      if (downloadUrl) {
+        URL.revokeObjectURL(downloadUrl);
+      }
     };
-  }, [pdfUrl]);
+  }, [pdfUrl, downloadUrl]);
 
   return (
     <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
@@ -240,13 +235,65 @@ const SplitPDF = () => {
                   </div>
                 )}
 
-                <button
-                  onClick={handleSplit}
-                  disabled={loading || !selectedFile || !pageRanges.trim()}
-                  className="w-full px-6 py-3 bg-green-primary text-white rounded-lg hover:bg-green-dark transition disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
-                >
-                  {loading ? 'Splitting PDF...' : 'Split PDF'}
-                </button>
+                {downloadUrl ? (
+                  <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-primary dark:border-green-light rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-6 h-6 text-green-primary dark:text-green-light flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
+                          Processing Complete!
+                        </h3>
+                        <p className="text-green-700 dark:text-green-300 mb-3">
+                          Your PDF has been split successfully. Click below to download.
+                        </p>
+                        <div className="flex gap-3">
+                          <a
+                            href={downloadUrl}
+                            download={downloadFileName}
+                            className="px-4 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition font-semibold inline-flex items-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download {downloadFileName}
+                          </a>
+                          <button
+                            onClick={() => {
+                              if (downloadUrl) {
+                                URL.revokeObjectURL(downloadUrl);
+                              }
+                              setDownloadUrl(null);
+                              setDownloadFileName('');
+                            }}
+                            className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition font-semibold border border-gray-300 dark:border-gray-600"
+                          >
+                            Split Another
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleSplit}
+                    disabled={loading || !selectedFile || !pageRanges.trim()}
+                    className="w-full px-6 py-3 bg-green-primary text-white rounded-lg hover:bg-green-dark transition disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Splitting PDF...
+                      </>
+                    ) : (
+                      'Split PDF'
+                    )}
+                  </button>
+                )}
 
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">How it works:</h3>

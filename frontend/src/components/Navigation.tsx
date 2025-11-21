@@ -27,7 +27,7 @@ const Navigation = ({
   backPath = '/dashboard',
   backLabel = 'Back to Dashboard'
 }: NavigationProps) => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const { isDark, toggleDarkMode } = useDarkMode();
   const navigate = useNavigate();
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -134,18 +134,15 @@ const Navigation = ({
             {showAuth && (
               <>
                 {isAuthenticated ? (
-                  <>
-                    <span className="text-gray-600 dark:text-gray-300">{user?.email}</span>
-                    <button
-                      onClick={() => {
-                        logout();
-                        navigate('/');
-                      }}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                    >
-                      Logout
-                    </button>
-                  </>
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate('/');
+                    }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                  >
+                    Logout
+                  </button>
                 ) : (
                   <>
                     <Link

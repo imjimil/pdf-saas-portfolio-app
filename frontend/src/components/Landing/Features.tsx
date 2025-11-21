@@ -82,7 +82,7 @@ const Features = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -92,23 +92,23 @@ const Features = () => {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               whileHover={{ y: -5, scale: 1.02 }}
               onClick={() => handleCardClick(feature)}
-              className="bg-cream-light dark:bg-gray-700 p-6 rounded-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-primary dark:hover:border-green-light relative overflow-hidden group"
+              className="bg-cream-light dark:bg-gray-700 p-4 md:p-6 rounded-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-primary dark:hover:border-green-light relative overflow-hidden group"
             >
               {/* Hover effect gradient */}
               <div className="absolute inset-0 bg-gradient-to-br from-green-primary/5 to-transparent dark:from-green-light/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
               <div className="relative z-10">
                 <motion.div
-                  className="text-4xl mb-4"
+                  className="text-3xl md:text-4xl mb-2 md:mb-4"
                   whileHover={{ scale: 1.2, rotate: 5 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
                   {feature.icon}
                 </motion.div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="text-base md:text-xl font-semibold text-gray-900 dark:text-white mb-1 md:mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 line-clamp-2 md:line-clamp-none">{feature.description}</p>
               </div>
             </motion.div>
           ))}

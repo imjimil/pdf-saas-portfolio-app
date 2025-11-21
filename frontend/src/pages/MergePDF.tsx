@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUsageTracking } from '../hooks/useUsageTracking';
@@ -17,6 +17,8 @@ const MergePDF = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadFileName, setDownloadFileName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,6 +85,21 @@ const MergePDF = () => {
     setDraggedIndex(null);
   };
 
+  // Cleanup download URL on unmount
+  useEffect(() => {
+    return () => {
+      if (downloadUrl) {
+        URL.revokeObjectURL(downloadUrl);
+      }
+      // Cleanup preview URLs
+      selectedFiles.forEach((file) => {
+        if (file.preview) {
+          URL.revokeObjectURL(file.preview);
+        }
+      });
+    };
+  }, [downloadUrl, selectedFiles]);
+
   const handleMerge = async () => {
     if (selectedFiles.length < 2) {
       setError('Please select at least 2 PDF files to merge');
@@ -105,27 +122,11 @@ const MergePDF = () => {
         incrementUsage();
       }
 
+      // Create download URL and store it
       const url = window.URL.createObjectURL(response);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'merged.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
+      setDownloadUrl(url);
+      setDownloadFileName('merged.pdf');
       setError('');
-      alert('PDFs merged successfully! The merged file has been downloaded.');
-      
-      // Cleanup preview URLs
-      selectedFiles.forEach((file) => {
-        if (file.preview) {
-          URL.revokeObjectURL(file.preview);
-        }
-      });
-      
-      // Reset
-      setSelectedFiles([]);
     } catch (err: any) {
       console.error('Merge error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to merge PDFs. Please try again.';
@@ -265,13 +266,74 @@ const MergePDF = () => {
             </div>
           )}
 
-          <button
-            onClick={handleMerge}
-            disabled={loading || selectedFiles.length < 2}
-            className="w-full px-6 py-3 bg-green-primary text-white rounded-lg hover:bg-green-dark transition disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
-          >
-            {loading ? 'Merging PDFs...' : `Merge ${selectedFiles.length} PDF${selectedFiles.length !== 1 ? 's' : ''}`}
-          </button>
+          {downloadUrl ? (
+            <div className="mb-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-primary dark:border-green-light rounded-lg p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <svg className="w-8 h-8 text-green-primary dark:text-green-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
+                    Processing Complete!
+                  </h3>
+                  <p className="text-green-700 dark:text-green-300 mb-4">
+                    Your PDFs have been merged successfully. Click the button below to download.
+                  </p>
+                  <div className="flex gap-3">
+                    <a
+                      href={downloadUrl}
+                      download={downloadFileName}
+                      className="px-6 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition font-semibold inline-flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download {downloadFileName}
+                    </a>
+                    <button
+                      onClick={() => {
+                        if (downloadUrl) {
+                          URL.revokeObjectURL(downloadUrl);
+                        }
+                        // Cleanup preview URLs
+                        selectedFiles.forEach((file) => {
+                          if (file.preview) {
+                            URL.revokeObjectURL(file.preview);
+                          }
+                        });
+                        setDownloadUrl(null);
+                        setDownloadFileName('');
+                        setSelectedFiles([]);
+                      }}
+                      className="px-6 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition font-semibold border border-gray-300 dark:border-gray-600"
+                    >
+                      Merge Another
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleMerge}
+              disabled={loading || selectedFiles.length < 2}
+              className="w-full px-6 py-3 bg-green-primary text-white rounded-lg hover:bg-green-dark transition disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Merging PDFs...
+                </>
+              ) : (
+                `Merge ${selectedFiles.length} PDF${selectedFiles.length !== 1 ? 's' : ''}`
+              )}
+            </button>
+          )}
 
           <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">How it works:</h3>
@@ -280,7 +342,7 @@ const MergePDF = () => {
               <li>Drag and drop files to reorder them as needed</li>
               <li>Files will be merged in the order shown (top to bottom)</li>
               <li>Click "Merge PDFs" to combine them into a single file</li>
-              <li>The merged PDF will be downloaded automatically</li>
+              <li>Download the merged PDF when processing is complete</li>
             </ul>
           </div>
         </div>
