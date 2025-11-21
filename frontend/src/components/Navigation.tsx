@@ -11,14 +11,14 @@ interface NavigationProps {
 }
 
 const tools = [
-  { name: 'PDF to Word', path: '/dashboard', endpoint: 'word' },
-  { name: 'Image to PDF', path: '/dashboard', endpoint: 'pdf' },
-  { name: 'Split PDF', path: '/split-pdf' },
-  { name: 'Merge PDF', path: '/merge-pdf' },
-  { name: 'Compress PDF', path: '/dashboard', endpoint: 'compress' },
-  { name: 'PDF to Text', path: '/dashboard', endpoint: 'txt' },
-  { name: 'PDF to EPUB', path: '/dashboard', endpoint: 'epub' },
-  { name: 'PDF OCR', path: '/dashboard', endpoint: 'ocr' },
+  { name: 'PDF to Word', icon: '📄', path: '/dashboard', endpoint: 'word' },
+  { name: 'Image to PDF', icon: '🖼️', path: '/dashboard', endpoint: 'pdf' },
+  { name: 'Split PDF', icon: '✂️', path: '/split-pdf' },
+  { name: 'Merge PDF', icon: '🔗', path: '/merge-pdf' },
+  { name: 'Compress PDF', icon: '🗜️', path: '/dashboard', endpoint: 'compress' },
+  { name: 'PDF to Text', icon: '📝', path: '/dashboard', endpoint: 'txt' },
+  { name: 'PDF to EPUB', icon: '📚', path: '/dashboard', endpoint: 'epub' },
+  { name: 'PDF OCR', icon: '👁️', path: '/dashboard', endpoint: 'ocr' },
 ];
 
 const Navigation = ({ 
@@ -68,7 +68,7 @@ const Navigation = ({
               to="/" 
               className="text-2xl font-bold text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
             >
-              Mypdftools
+              My PDF Tools
             </Link>
           </div>
           <div className="flex items-center space-x-4">
@@ -95,9 +95,10 @@ const Navigation = ({
                     <button
                       key={tool.name}
                       onClick={() => handleToolClick(tool)}
-                      className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                      className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2"
                     >
-                      {tool.name}
+                      <span className="text-lg">{tool.icon}</span>
+                      <span>{tool.name}</span>
                     </button>
                   ))}
                 </div>

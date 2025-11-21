@@ -57,8 +57,16 @@ const Features = () => {
   };
 
   return (
-    <section className="py-20 bg-white dark:bg-gray-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative py-20 bg-white dark:bg-gray-800 transition-colors overflow-hidden">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-5 dark:opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)`,
+          backgroundSize: '40px 40px',
+        }} />
+      </div>
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -82,14 +90,26 @@ const Features = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
+              whileHover={{ y: -5, scale: 1.02 }}
               onClick={() => handleCardClick(feature)}
-              className="bg-cream-light dark:bg-gray-700 p-6 rounded-lg hover:shadow-lg transition border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-primary dark:hover:border-green-light transform hover:scale-105"
+              className="bg-cream-light dark:bg-gray-700 p-6 rounded-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-primary dark:hover:border-green-light relative overflow-hidden group"
             >
-              <div className="text-4xl mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+              {/* Hover effect gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-green-primary/5 to-transparent dark:from-green-light/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              <div className="relative z-10">
+                <motion.div
+                  className="text-4xl mb-4"
+                  whileHover={{ scale: 1.2, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  {feature.icon}
+                </motion.div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+              </div>
             </motion.div>
           ))}
         </div>

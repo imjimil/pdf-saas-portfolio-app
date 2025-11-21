@@ -20,8 +20,24 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section className="py-20 bg-cream-light dark:bg-gray-900 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative py-20 bg-cream-light dark:bg-gray-900 transition-colors overflow-hidden">
+      {/* Decorative elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute top-1/4 right-10 w-64 h-64 bg-green-primary/5 dark:bg-green-light/5 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </div>
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -45,11 +61,21 @@ const HowItWorks = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.2 }}
-              className="text-center"
+              whileHover={{ y: -10 }}
+              className="text-center relative"
             >
-              <div className="w-16 h-16 bg-green-primary dark:bg-green-dark text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+              {/* Connecting line between steps */}
+              {index < steps.length - 1 && (
+                <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-green-primary/30 to-transparent" style={{ width: 'calc(100% - 4rem)' }} />
+              )}
+              
+              <motion.div
+                className="w-16 h-16 bg-gradient-to-br from-green-primary to-green-dark dark:from-green-light dark:to-green-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg relative z-10"
+                whileHover={{ scale: 1.1, rotate: 360 }}
+                transition={{ type: "spring", stiffness: 200 }}
+              >
                 {step.number}
-              </div>
+              </motion.div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                 {step.title}
               </h3>
