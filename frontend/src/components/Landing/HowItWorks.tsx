@@ -49,7 +49,7 @@ const HowItWorks = () => {
             How It Works
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Simple, fast, and secure. Get started in seconds.
+            Simple, fast, and secure. Process your PDFs in three easy steps.
           </p>
         </motion.div>
 

@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import Hero from '../components/Landing/Hero';
 import Features from '../components/Landing/Features';
+import Security from '../components/Landing/Security';
+import Benefits from '../components/Landing/Benefits';
 import HowItWorks from '../components/Landing/HowItWorks';
 import Footer from '../components/Landing/Footer';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +17,8 @@ const Landing = () => {
 
       <Hero isAuthenticated={isAuthenticated} />
       <Features />
+      <Security />
+      <Benefits />
       <HowItWorks />
       <Footer />
     </div>

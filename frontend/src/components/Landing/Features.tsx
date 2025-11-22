@@ -23,6 +23,19 @@ const features = [
     path: '/split-pdf',
   },
   {
+    title: 'Merge PDF',
+    description: 'Combine multiple PDF files into one document.',
+    icon: '🔗',
+    path: '/merge-pdf',
+  },
+  {
+    title: 'Compress PDF',
+    description: 'Reduce PDF file size without losing quality.',
+    icon: '🗜️',
+    path: '/dashboard',
+    endpoint: 'compress',
+  },
+  {
     title: 'PDF to Text',
     description: 'Extract text content from PDF files quickly and accurately.',
     icon: '📝',
@@ -42,6 +55,18 @@ const features = [
     icon: '👁️',
     path: '/dashboard',
     endpoint: 'ocr',
+  },
+  {
+    title: 'Watermark PDF',
+    description: 'Add text watermarks to protect and brand your documents.',
+    icon: '💧',
+    path: '/watermark-pdf',
+  },
+  {
+    title: 'Protect PDF',
+    description: 'Add password protection and control document permissions.',
+    icon: '🔒',
+    path: '/protect-pdf',
   },
 ];
 
@@ -75,14 +100,14 @@ const Features = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Everything You Need to Work with PDFs
+            Complete PDF Toolkit
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Powerful tools to convert, process, and extract content from your PDF documents.
+            All the tools you need to work with PDFs. Convert, merge, split, protect, and more - all in one place.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -92,23 +117,23 @@ const Features = () => {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               whileHover={{ y: -5, scale: 1.02 }}
               onClick={() => handleCardClick(feature)}
-              className="bg-cream-light dark:bg-gray-700 p-4 md:p-6 rounded-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-primary dark:hover:border-green-light relative overflow-hidden group"
+              className="bg-cream-light dark:bg-gray-700 p-4 md:p-5 rounded-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-primary dark:hover:border-green-light relative overflow-hidden group flex flex-col"
             >
               {/* Hover effect gradient */}
               <div className="absolute inset-0 bg-gradient-to-br from-green-primary/5 to-transparent dark:from-green-light/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
-              <div className="relative z-10">
+              <div className="relative z-10 flex-1 flex flex-col">
                 <motion.div
-                  className="text-3xl md:text-4xl mb-2 md:mb-4"
+                  className="text-2xl md:text-3xl mb-2 flex-shrink-0"
                   whileHover={{ scale: 1.2, rotate: 5 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
                   {feature.icon}
                 </motion.div>
-                <h3 className="text-base md:text-xl font-semibold text-gray-900 dark:text-white mb-1 md:mb-2">
+                <h3 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-1 md:mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 line-clamp-2 md:line-clamp-none">{feature.description}</p>
+                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 flex-1">{feature.description}</p>
               </div>
             </motion.div>
           ))}

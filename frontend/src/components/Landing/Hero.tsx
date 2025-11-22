@@ -114,8 +114,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto"
           >
-            Convert, split, merge, and extract text from PDFs. Powerful tools
-            for all your document needs.
+            Professional PDF tools for conversion, editing, and protection. Fast, secure, and completely free.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
