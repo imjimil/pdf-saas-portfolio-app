@@ -34,7 +34,7 @@ const Register = () => {
         const response = await authAPI.register(values.email, values.password);
         if (response && response.user && response.token) {
           login(response.user, response.token);
-          navigate('/dashboard');
+          navigate('/tools');
         } else {
           setError('Invalid response from server');
         }

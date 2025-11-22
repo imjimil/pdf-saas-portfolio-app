@@ -74,6 +74,34 @@ export const pdfAPI = {
     });
     return response.data;
   },
+  wordToPdf: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await api.post('/pdf/word-to-pdf', formData, {
+        responseType: 'blob',
+      });
+      // Check if response is actually an error JSON blob
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || 'Failed to convert Word to PDF');
+      }
+      return response.data;
+    } catch (error: any) {
+      // If it's a blob error response, try to parse it
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Failed to convert Word to PDF');
+        } catch {
+          throw new Error('Failed to convert Word to PDF');
+        }
+      }
+      throw error;
+    }
+  },
   imageToPdf: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

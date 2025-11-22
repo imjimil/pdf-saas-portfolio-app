@@ -97,9 +97,12 @@ const WatermarkPDF = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </button>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-              Watermark PDF
-            </h1>
+            <div className="flex items-center gap-3 flex-1">
+              <span className="text-3xl md:text-4xl">💧</span>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                Watermark PDF
+              </h1>
+            </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 ml-14">
             Add text watermarks to your PDF documents with customizable position, opacity, and font size.

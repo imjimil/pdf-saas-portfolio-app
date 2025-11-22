@@ -19,7 +19,7 @@ const AuthCallback = () => {
 
     if (token && email) {
       login({ email }, token);
-      navigate('/dashboard');
+      navigate('/tools');
     } else {
       navigate('/login?error=Authentication failed');
     }

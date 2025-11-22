@@ -11,14 +11,14 @@ interface NavigationProps {
 }
 
 const tools = [
-  { name: 'PDF to Word', icon: '📄', path: '/dashboard', endpoint: 'word' },
-  { name: 'Image to PDF', icon: '🖼️', path: '/dashboard', endpoint: 'pdf' },
+  { name: 'PDF to Word', icon: '📄', path: '/pdf-to-word' },
+  { name: 'Image to PDF', icon: '🖼️', path: '/image-to-pdf' },
   { name: 'Split PDF', icon: '✂️', path: '/split-pdf' },
   { name: 'Merge PDF', icon: '🔗', path: '/merge-pdf' },
-  { name: 'Compress PDF', icon: '🗜️', path: '/dashboard', endpoint: 'compress' },
-  { name: 'PDF to Text', icon: '📝', path: '/dashboard', endpoint: 'txt' },
-  { name: 'PDF to EPUB', icon: '📚', path: '/dashboard', endpoint: 'epub' },
-  { name: 'PDF OCR', icon: '👁️', path: '/dashboard', endpoint: 'ocr' },
+  { name: 'Compress PDF', icon: '🗜️', path: '/compress-pdf' },
+  { name: 'PDF to Text', icon: '📝', path: '/pdf-to-text' },
+  { name: 'PDF to EPUB', icon: '📚', path: '/pdf-to-epub' },
+  { name: 'PDF OCR', icon: '👁️', path: '/pdf-ocr' },
   { name: 'Watermark PDF', icon: '💧', path: '/watermark-pdf' },
   { name: 'Protect PDF', icon: '🔒', path: '/protect-pdf' },
 ];
@@ -26,8 +26,8 @@ const tools = [
 const Navigation = ({ 
   showAuth = true, 
   showBack = false, 
-  backPath = '/dashboard',
-  backLabel = 'Back to Dashboard'
+  backPath = '/tools',
+  backLabel = 'Back to Tools'
 }: NavigationProps) => {
   const { isAuthenticated, logout } = useAuth();
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -64,11 +64,7 @@ const Navigation = ({
       setMobileMenuOpen(false);
     }
     // Navigate immediately
-    if (tool.endpoint) {
-      navigate(tool.path, { state: { selectedEndpoint: tool.endpoint } });
-    } else {
-      navigate(tool.path);
-    }
+    navigate(tool.path);
   };
 
   return (
@@ -277,40 +273,20 @@ const Navigation = ({
                       </div>
                       {toolsOpen && (
                         <div className="mt-2 px-4 grid grid-cols-2 gap-2">
-                          {tools.map((tool) => {
-                            if (tool.endpoint) {
-                              return (
-                                <Link
-                                  key={tool.name}
-                                  to={tool.path}
-                                  state={{ selectedEndpoint: tool.endpoint }}
-                                  onClick={() => {
-                                    setToolsOpen(false);
-                                    setMobileMenuOpen(false);
-                                  }}
-                                  className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
-                                >
-                                  <span className="text-base flex-shrink-0">{tool.icon}</span>
-                                  <span className="text-xs truncate">{tool.name}</span>
-                                </Link>
-                              );
-                            } else {
-                              return (
-                                <Link
-                                  key={tool.name}
-                                  to={tool.path}
-                                  onClick={() => {
-                                    setToolsOpen(false);
-                                    setMobileMenuOpen(false);
-                                  }}
-                                  className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
-                                >
-                                  <span className="text-base flex-shrink-0">{tool.icon}</span>
-                                  <span className="text-xs truncate">{tool.name}</span>
-                                </Link>
-                              );
-                            }
-                          })}
+                          {tools.map((tool) => (
+                            <Link
+                              key={tool.name}
+                              to={tool.path}
+                              onClick={() => {
+                                setToolsOpen(false);
+                                setMobileMenuOpen(false);
+                              }}
+                              className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
+                            >
+                              <span className="text-base flex-shrink-0">{tool.icon}</span>
+                              <span className="text-xs truncate">{tool.name}</span>
+                            </Link>
+                          ))}
                         </div>
                       )}
                     </div>

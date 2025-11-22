@@ -34,6 +34,7 @@ const fileSchema = new Schema<IFile>(
       required: true,
       enum: [
         'word',
+        'word-to-pdf',
         'pdf',
         'split',
         'txt',

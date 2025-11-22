@@ -19,16 +19,21 @@ const Tools = () => {
       name: 'PDF to Word',
       description: 'Convert PDF to editable Word document',
       icon: '📄',
-      path: '/dashboard',
-      endpoint: 'word',
+      path: '/pdf-to-word',
       color: 'from-blue-500 to-blue-600',
+    },
+    {
+      name: 'Word to PDF',
+      description: 'Convert Word documents to PDF format',
+      icon: '📝',
+      path: '/word-to-pdf',
+      color: 'from-emerald-500 to-emerald-600',
     },
     {
       name: 'Image to PDF',
       description: 'Convert images to PDF format',
       icon: '🖼️',
-      path: '/dashboard',
-      endpoint: 'pdf',
+      path: '/image-to-pdf',
       color: 'from-purple-500 to-purple-600',
     },
     {
@@ -49,32 +54,28 @@ const Tools = () => {
       name: 'Compress PDF',
       description: 'Reduce PDF file size',
       icon: '🗜️',
-      path: '/dashboard',
-      endpoint: 'compress',
+      path: '/compress-pdf',
       color: 'from-orange-500 to-orange-600',
     },
     {
       name: 'PDF to Text',
       description: 'Extract text from PDF',
       icon: '📝',
-      path: '/dashboard',
-      endpoint: 'txt',
+      path: '/pdf-to-text',
       color: 'from-indigo-500 to-indigo-600',
     },
     {
       name: 'PDF to EPUB',
       description: 'Convert PDF to EPUB format',
       icon: '📚',
-      path: '/dashboard',
-      endpoint: 'epub',
+      path: '/pdf-to-epub',
       color: 'from-pink-500 to-pink-600',
     },
     {
       name: 'PDF OCR',
       description: 'Extract text using OCR technology',
       icon: '👁️',
-      path: '/dashboard',
-      endpoint: 'ocr',
+      path: '/pdf-ocr',
       color: 'from-teal-500 to-teal-600',
     },
     {
@@ -94,11 +95,7 @@ const Tools = () => {
   ];
 
   const handleToolClick = (tool: Tool) => {
-    if (tool.endpoint) {
-      navigate(tool.path, { state: { selectedEndpoint: tool.endpoint } });
-    } else {
-      navigate(tool.path);
-    }
+    navigate(tool.path);
   };
 
   return (

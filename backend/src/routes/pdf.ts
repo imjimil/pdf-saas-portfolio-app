@@ -6,7 +6,16 @@ import fsSync from 'fs';
 import pdfParse from 'pdf-parse';
 import archiver from 'archiver';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { PDFService } from '../services/pdfService';
+import { PdfToWordService } from '../services/pdfToWordService';
+import { ImageToPdfService } from '../services/imageToPdfService';
+import { SplitPdfService } from '../services/splitPdfService';
+import { PdfToTxtService } from '../services/pdfToTxtService';
+import { PdfToEpubService } from '../services/pdfToEpubService';
+import { MergePdfService } from '../services/mergePdfService';
+import { CompressPdfService } from '../services/compressPdfService';
+import { WatermarkPdfService } from '../services/watermarkPdfService';
+import { WordToPdfService } from '../services/wordToPdfService';
+import { ProtectPdfService } from '../services/protectPdfService';
 import { OCRService } from '../services/ocrService';
 import { saveFileHistory } from '../utils/fileHistory';
 
@@ -36,11 +45,13 @@ const upload = multer({
       'image/jpg',
       'image/png',
       'image/gif',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF and images are allowed.'));
+      cb(new Error('Invalid file type. Only PDF, images, and Word documents are allowed.'));
     }
   },
 });
@@ -73,7 +84,7 @@ router.post(
 
     try {
       const outputPath = req.file.path.replace('.pdf', '.txt');
-      await PDFService.pdfToWord(req.file.path, outputPath);
+      await PdfToWordService.convert(req.file.path, outputPath);
       
       // Get file size
       const stats = await fs.stat(outputPath);
@@ -138,6 +149,95 @@ router.post(
   }
 );
 
+// Word to PDF
+router.post(
+  '/word-to-pdf',
+  authenticate,
+  upload.single('file'),
+  async (req: AuthRequest, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Validate file is Word document
+    const fileExtension = path.extname(req.file.originalname).toLowerCase();
+    const wordMimeTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+    ];
+    
+    // Check both MIME type and file extension
+    const isValidMimeType = wordMimeTypes.includes(req.file.mimetype);
+    const isValidExtension = fileExtension === '.doc' || fileExtension === '.docx';
+    
+    if (!isValidMimeType && !isValidExtension) {
+      cleanupFiles([req.file.path]);
+      return res.status(400).json({ message: 'File must be a Word document (.docx format is recommended)' });
+    }
+    
+    // Warn about .doc files (legacy format)
+    if (fileExtension === '.doc' || req.file.mimetype === 'application/msword') {
+      console.warn('Legacy .doc file detected. Mammoth only supports .docx format.');
+    }
+
+    try {
+      console.log('Word to PDF request:', {
+        filename: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+      });
+      
+      const outputPath = req.file.path.replace(path.extname(req.file.path), '.pdf');
+      await WordToPdfService.convert(req.file.path, outputPath, req.file.originalname);
+      
+      // Verify output file was created
+      try {
+        await fs.access(outputPath);
+      } catch {
+        throw new Error('PDF file was not created successfully');
+      }
+      
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      console.log('Word to PDF conversion successful:', {
+        outputPath,
+        fileSize,
+      });
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'word-to-pdf',
+        fileSize,
+      });
+      
+      res.download(outputPath, (err) => {
+        if (err) {
+          console.error('Download error:', err);
+        }
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
+      });
+    } catch (error: any) {
+      console.error('Word to PDF error:', {
+        message: error.message,
+        stack: error.stack,
+        filename: req.file?.originalname,
+      });
+      cleanupFiles([req.file.path]);
+      res.status(500).json({ 
+        message: error.message || 'Failed to convert Word document to PDF. Please ensure the file is a valid .docx document.' 
+      });
+    }
+  }
+);
+
 // Image to PDF
 router.post(
   '/image-to-pdf',
@@ -150,7 +250,7 @@ router.post(
 
     try {
       const outputPath = req.file.path.replace(path.extname(req.file.path), '.pdf');
-      await PDFService.imageToPdf(req.file.path, outputPath);
+      await ImageToPdfService.convert(req.file.path, outputPath);
       
       // Get file size
       const stats = await fs.stat(outputPath);
@@ -196,7 +296,7 @@ router.post(
       await fs.mkdir(outputDir, { recursive: true });
 
       const parsedRanges = pageRanges ? JSON.parse(pageRanges) : undefined;
-      const outputFiles = await PDFService.splitPdf(req.file.path, outputDir, parsedRanges);
+      const outputFiles = await SplitPdfService.split(req.file.path, outputDir, parsedRanges);
 
       if (outputFiles.length === 0) {
         cleanupFiles([req.file.path]);
@@ -256,7 +356,7 @@ router.post(
 
     try {
       const outputPath = req.file.path.replace('.pdf', '.txt');
-      await PDFService.pdfToTxt(req.file.path, outputPath);
+      await PdfToTxtService.convert(req.file.path, outputPath);
       
       // Get file size
       const stats = await fs.stat(outputPath);
@@ -298,7 +398,7 @@ router.post(
 
     try {
       const outputPath = req.file.path.replace('.pdf', '.epub');
-      await PDFService.pdfToEpub(req.file.path, outputPath);
+      await PdfToEpubService.convert(req.file.path, outputPath);
       
       // Get file size
       const stats = await fs.stat(outputPath);
@@ -397,7 +497,7 @@ router.post(
       const outputPath = path.join(outputDir, 'merged.pdf');
 
       const pdfPaths = files.map((file) => file.path);
-      await PDFService.mergePdfs(pdfPaths, outputPath);
+      await MergePdfService.merge(pdfPaths, outputPath);
 
       // Get file size
       const stats = await fs.stat(outputPath);
@@ -449,7 +549,7 @@ router.post(
 
     try {
       const outputPath = req.file.path.replace('.pdf', '_compressed.pdf');
-      await PDFService.compressPdf(req.file.path, outputPath);
+      await CompressPdfService.compress(req.file.path, outputPath);
       
       // Get file size
       const stats = await fs.stat(outputPath);
@@ -554,7 +654,7 @@ router.post(
         fontSize,
       });
       
-      await PDFService.addWatermark(req.file.path, outputPath, watermarkText.trim(), {
+      await WatermarkPdfService.addWatermark(req.file.path, outputPath, watermarkText.trim(), {
         position: position || 'center',
         opacity: opacity ? parseFloat(opacity) : 0.3,
         fontSize: fontSize ? parseInt(fontSize) : 50,
@@ -632,7 +732,7 @@ router.post(
         ? req.file.path.replace('.pdf', '_protected.pdf')
         : req.file.path + '_protected.pdf';
       
-      await PDFService.protectPdf(req.file.path, outputPath, password, ownerPassword, {
+      await ProtectPdfService.protect(req.file.path, outputPath, password, ownerPassword, {
         printing: allowPrinting === 'false' ? false : allowPrinting === 'low' ? 'lowResolution' : 'highResolution',
         modifying: allowModifying !== 'false',
         copying: allowCopying !== 'false',
