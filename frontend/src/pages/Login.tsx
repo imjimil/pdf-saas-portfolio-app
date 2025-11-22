@@ -28,7 +28,7 @@ const Login = () => {
         const response = await authAPI.login(values.email, values.password);
         if (response && response.user && response.token) {
           login(response.user, response.token);
-          navigate('/dashboard');
+          navigate('/tools');
         } else {
           setError('Invalid response from server');
         }

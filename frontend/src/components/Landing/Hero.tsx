@@ -131,7 +131,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
                 to={isAuthenticated ? "/tools" : "/register"}
                 className="px-8 py-4 bg-green-primary dark:bg-green-dark text-white rounded-lg text-lg font-semibold hover:bg-green-dark dark:hover:bg-green-primary transition shadow-lg hover:shadow-xl inline-block"
               >
-                {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
+                {isAuthenticated ? "Explore Tools" : "Get Started Free"}
               </Link>
             </motion.div>
             {!isAuthenticated && (
@@ -140,10 +140,10 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link
-                  to="/dashboard"
+                  to="/tools"
                   className="px-8 py-4 bg-white dark:bg-gray-800 text-green-primary dark:text-green-light rounded-lg text-lg font-semibold border-2 border-green-primary dark:border-green-light hover:bg-cream-base dark:hover:bg-gray-700 transition inline-block"
                 >
-                  Try Demo
+                  Try For Free
                 </Link>
               </motion.div>
             )}
