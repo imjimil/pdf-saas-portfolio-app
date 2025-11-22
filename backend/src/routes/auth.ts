@@ -7,41 +7,65 @@ import User from '../models/User';
 const router = express.Router();
 
 // Configure Google OAuth Strategy (only if credentials are provided)
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+if (googleClientId && googleClientSecret) {
+  console.log('✓ Google OAuth credentials found. OAuth is enabled.');
   passport.use(
     new GoogleStrategy(
       {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        clientID: googleClientId,
+        clientSecret: googleClientSecret,
         callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (accessToken: string, refreshToken: string, profile: any, done: (error: any, user?: any) => void) => {
         try {
+          const email = profile.emails?.[0]?.value;
+          
+          if (!email) {
+            console.error('Google OAuth: No email in profile');
+            return done(new Error('No email found in Google profile'), undefined);
+          }
+
+          console.log('Google OAuth: Processing profile', { email, googleId: profile.id });
+          
           // Check if user exists
-          let user = await User.findOne({ email: profile.emails?.[0]?.value });
+          let user = await User.findOne({ email: email.toLowerCase().trim() });
           
           if (user) {
-            // User exists, return user
+            // Update user with Google ID if not set
+            if (!user.googleId) {
+              user.googleId = profile.id;
+              if (!user.name && profile.displayName) {
+                user.name = profile.displayName;
+              }
+              await user.save();
+            }
+            console.log('Google OAuth: Existing user found', { email: user.email });
             return done(null, user);
           } else {
             // Create new user
             user = new User({
-              email: profile.emails?.[0]?.value,
+              email: email.toLowerCase().trim(),
               googleId: profile.id,
-              name: profile.displayName,
+              name: profile.displayName || '',
               // No password for OAuth users
             });
             await user.save();
+            console.log('Google OAuth: New user created', { email: user.email });
             return done(null, user);
           }
         } catch (error: any) {
+          console.error('Google OAuth strategy error:', error);
           return done(error, undefined);
         }
       }
     )
   );
 } else {
-  console.warn('Google OAuth credentials not found. Google OAuth is disabled.');
+  console.warn('⚠ Google OAuth credentials not found. Google OAuth is disabled.');
+  console.warn(`   GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET'}`);
+  console.warn(`   GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? 'SET' : 'NOT SET'}`);
 }
 
 // Serialize user for session
@@ -166,7 +190,7 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 // Google OAuth routes (only if OAuth is configured)
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+if (googleClientId && googleClientSecret) {
   router.get(
     '/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
@@ -174,10 +198,18 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
   router.get(
     '/google/callback',
-    passport.authenticate('google', { session: false }),
+    passport.authenticate('google', { session: false, failureRedirect: '/login' }),
     async (req: any, res: Response) => {
       try {
         const user = req.user;
+        
+        if (!user) {
+          console.error('OAuth callback: No user found');
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Authentication failed: No user data')}`);
+        }
+
+        console.log('OAuth callback: User authenticated', { email: user.email, id: user._id });
         
         // Generate token
         const token = jwt.sign(
@@ -190,8 +222,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         res.redirect(`${frontendUrl}/auth/callback?token=${token}&email=${encodeURIComponent(user.email)}`);
       } catch (error: any) {
+        console.error('OAuth callback error:', error);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(error.message)}`);
+        res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`);
       }
     }
   );

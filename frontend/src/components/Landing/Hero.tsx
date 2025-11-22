@@ -1,7 +1,11 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-const Hero = () => {
+interface HeroProps {
+  isAuthenticated?: boolean;
+}
+
+const Hero = ({ isAuthenticated = false }: HeroProps) => {
   return (
     <section className="relative bg-cream-light dark:bg-gray-900 py-20 lg:py-32 transition-colors overflow-hidden">
       {/* Abstract Background Art */}
@@ -124,23 +128,25 @@ const Hero = () => {
               whileTap={{ scale: 0.95 }}
             >
               <Link
-                to="/register"
+                to={isAuthenticated ? "/dashboard" : "/register"}
                 className="px-8 py-4 bg-green-primary dark:bg-green-dark text-white rounded-lg text-lg font-semibold hover:bg-green-dark dark:hover:bg-green-primary transition shadow-lg hover:shadow-xl inline-block"
               >
-                Get Started Free
+                {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
               </Link>
             </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link
-                to="/dashboard"
-                className="px-8 py-4 bg-white dark:bg-gray-800 text-green-primary dark:text-green-light rounded-lg text-lg font-semibold border-2 border-green-primary dark:border-green-light hover:bg-cream-base dark:hover:bg-gray-700 transition inline-block"
+            {!isAuthenticated && (
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                Try Demo
-              </Link>
-            </motion.div>
+                <Link
+                  to="/dashboard"
+                  className="px-8 py-4 bg-white dark:bg-gray-800 text-green-primary dark:text-green-light rounded-lg text-lg font-semibold border-2 border-green-primary dark:border-green-light hover:bg-cream-base dark:hover:bg-gray-700 transition inline-block"
+                >
+                  Try Demo
+                </Link>
+              </motion.div>
+            )}
           </motion.div>
         </motion.div>
       </div>

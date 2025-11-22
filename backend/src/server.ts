@@ -1,13 +1,14 @@
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import session from 'express-session';
 import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdf';
-
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;

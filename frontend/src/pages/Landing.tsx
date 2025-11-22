@@ -13,7 +13,7 @@ const Landing = () => {
     <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
       <Navigation showAuth={true} />
 
-      <Hero />
+      <Hero isAuthenticated={isAuthenticated} />
       <Features />
       <HowItWorks />
       <Footer />
