@@ -44,9 +44,9 @@ const Footer = () => {
             <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Security</h4>
             <ul className="space-y-2 text-gray-600 dark:text-gray-300">
               <li><Link to="/privacy" className="hover:text-green-primary dark:hover:text-green-light transition">Privacy Policy</Link></li>
+              <li><Link to="/contact" className="hover:text-green-primary dark:hover:text-green-light transition">Contact</Link></li>
               <li>Data Protection</li>
               <li>SSL Encryption</li>
-              <li>No Data Storage</li>
             </ul>
           </div>
         </div>
@@ -58,7 +58,7 @@ const Footer = () => {
             <div className="flex gap-6 text-sm text-gray-600 dark:text-gray-300">
               <Link to="/privacy" className="hover:text-green-primary dark:hover:text-green-light transition">Privacy</Link>
               <span className="hover:text-green-primary dark:hover:text-green-light transition cursor-pointer">Terms</span>
-              <span className="hover:text-green-primary dark:hover:text-green-light transition cursor-pointer">Contact</span>
+              <Link to="/contact" className="hover:text-green-primary dark:hover:text-green-light transition">Contact</Link>
             </div>
           </div>
         </div>
