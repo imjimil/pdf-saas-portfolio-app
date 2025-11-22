@@ -11,6 +11,7 @@ import ProtectPDF from './pages/ProtectPDF';
 import SplitPDF from './pages/SplitPDF';
 import MergePDF from './pages/MergePDF';
 import AuthCallback from './pages/AuthCallback';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import { useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -22,6 +23,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route
           path="/dashboard"
           element={

@@ -43,7 +43,7 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Security</h4>
             <ul className="space-y-2 text-gray-600 dark:text-gray-300">
-              <li>Privacy Policy</li>
+              <li><Link to="/privacy" className="hover:text-green-primary dark:hover:text-green-light transition">Privacy Policy</Link></li>
               <li>Data Protection</li>
               <li>SSL Encryption</li>
               <li>No Data Storage</li>
@@ -56,7 +56,7 @@ const Footer = () => {
               &copy; 2024 Mypdftools. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm text-gray-600 dark:text-gray-300">
-              <span className="hover:text-green-primary dark:hover:text-green-light transition cursor-pointer">Privacy</span>
+              <Link to="/privacy" className="hover:text-green-primary dark:hover:text-green-light transition">Privacy</Link>
               <span className="hover:text-green-primary dark:hover:text-green-light transition cursor-pointer">Terms</span>
               <span className="hover:text-green-primary dark:hover:text-green-light transition cursor-pointer">Contact</span>
             </div>
