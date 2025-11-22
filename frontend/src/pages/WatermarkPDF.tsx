@@ -86,9 +86,25 @@ const WatermarkPDF = () => {
       <Navigation showAuth={true} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6 md:mb-8">
-          Watermark PDF
-        </h1>
+        <div className="mb-6 md:mb-8">
+          <div className="flex items-center gap-4 mb-2">
+            <button
+              onClick={() => navigate('/tools')}
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Back to Tools"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              Watermark PDF
+            </h1>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 ml-14">
+            Add text watermarks to your PDF documents with customizable position, opacity, and font size.
+          </p>
+        </div>
 
         {/* Upload File */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 mb-6 border border-gray-200 dark:border-gray-700">

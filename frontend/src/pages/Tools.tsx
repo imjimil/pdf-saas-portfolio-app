@@ -120,7 +120,7 @@ const Tools = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           {tools.map((tool, index) => (
             <motion.div
               key={tool.name}
@@ -130,25 +130,25 @@ const Tools = () => {
               whileHover={{ y: -5, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleToolClick(tool)}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-200 dark:border-gray-700 overflow-hidden group"
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-200 dark:border-gray-700 overflow-hidden group flex flex-col"
             >
-              <div className={`h-2 bg-gradient-to-r ${tool.color}`} />
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="text-4xl group-hover:scale-110 transition-transform">
+              <div className={`h-1.5 sm:h-2 bg-gradient-to-r ${tool.color}`} />
+              <div className="p-4 sm:p-6 flex-1 flex flex-col">
+                <div className="flex items-start gap-3 mb-2 sm:mb-3">
+                  <div className="text-2xl sm:text-3xl md:text-4xl flex-shrink-0 group-hover:scale-110 transition-transform">
                     {tool.icon}
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 dark:text-white leading-tight flex-1 min-w-0 break-words">
                     {tool.name}
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 sm:line-clamp-none mb-3 sm:mb-0 flex-1">
                   {tool.description}
                 </p>
-                <div className="mt-4 flex items-center text-green-primary dark:text-green-light text-sm font-medium">
+                <div className="mt-auto pt-3 sm:pt-4 flex items-center text-green-primary dark:text-green-light text-xs sm:text-sm font-medium">
                   <span>Use Tool</span>
                   <svg
-                    className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"
+                    className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

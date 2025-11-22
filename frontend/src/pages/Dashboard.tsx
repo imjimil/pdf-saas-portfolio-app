@@ -252,27 +252,30 @@ const Dashboard = () => {
         {selectedOperation ? (
           <>
             {/* Header with selected tool and back button */}
-            <div className="flex items-center gap-4 mb-6">
-              <button
-                onClick={() => {
-                  setSelectedOperation(null);
-                  setSelectedFile(null);
-                  setDownloadUrl(null);
-                  setError('');
-                  navigate('/tools');
-                }}
-                className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-              </button>
-              <div>
+            <div className="mb-6 md:mb-8">
+              <div className="flex items-center gap-4 mb-2">
+                <button
+                  onClick={() => {
+                    setSelectedOperation(null);
+                    setSelectedFile(null);
+                    setDownloadUrl(null);
+                    setError('');
+                    navigate('/tools');
+                  }}
+                  className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  title="Back to Tools"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                   {selectedOperation.icon} {selectedOperation.title}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">{selectedOperation.description}</p>
               </div>
+              <p className="text-gray-600 dark:text-gray-400 ml-14">
+                {selectedOperation.description}
+              </p>
             </div>
           </>
         ) : (

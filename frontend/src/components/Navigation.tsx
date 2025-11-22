@@ -88,37 +88,50 @@ const Navigation = ({
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {/* Tools Dropdown */}
             <div className="relative" ref={toolsRef}>
-              <button
-                onClick={() => setToolsOpen(!toolsOpen)}
-                className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2"
-              >
-                <span>Tools</span>
-                <svg
-                  className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <div className="flex items-center">
+                <Link
+                  to="/tools"
+                  className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+                  Tools
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setToolsOpen(!toolsOpen);
+                  }}
+                  className="px-2 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition ml-1"
+                >
+                  <svg
+                    className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
               
               {toolsOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2 max-h-96 overflow-y-auto">
-                  {tools.map((tool) => (
-                    <button
-                      key={tool.name}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleToolClick(tool, false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2"
-                    >
-                      <span className="text-lg">{tool.icon}</span>
-                      <span>{tool.name}</span>
-                    </button>
-                  ))}
+                <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2 max-h-96 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-1 gap-1 px-2">
+                    {tools.map((tool) => (
+                      <button
+                        key={tool.name}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToolClick(tool, false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 rounded"
+                      >
+                        <span className="text-base sm:text-lg flex-shrink-0">{tool.icon}</span>
+                        <span className="text-xs sm:text-sm truncate">{tool.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -153,12 +166,6 @@ const Navigation = ({
               <>
                 {isAuthenticated ? (
                   <>
-                    <Link
-                      to="/tools"
-                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                    >
-                      Tools
-                    </Link>
                     <Link
                       to="/my-dashboard"
                       className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
@@ -240,13 +247,73 @@ const Navigation = ({
               <>
                 {isAuthenticated ? (
                   <>
-                    <Link
-                      to="/tools"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                    >
-                      Tools
-                    </Link>
+                    {/* Combined Tools Link and Dropdown */}
+                    <div>
+                      <div className="flex items-center px-4">
+                        <Link
+                          to="/tools"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex-1 px-0 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                        >
+                          Tools
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setToolsOpen(!toolsOpen);
+                          }}
+                          className="px-2 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                        >
+                          <svg
+                            className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
+                      {toolsOpen && (
+                        <div className="mt-2 px-4 grid grid-cols-2 gap-2">
+                          {tools.map((tool) => {
+                            if (tool.endpoint) {
+                              return (
+                                <Link
+                                  key={tool.name}
+                                  to={tool.path}
+                                  state={{ selectedEndpoint: tool.endpoint }}
+                                  onClick={() => {
+                                    setToolsOpen(false);
+                                    setMobileMenuOpen(false);
+                                  }}
+                                  className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
+                                >
+                                  <span className="text-base flex-shrink-0">{tool.icon}</span>
+                                  <span className="text-xs truncate">{tool.name}</span>
+                                </Link>
+                              );
+                            } else {
+                              return (
+                                <Link
+                                  key={tool.name}
+                                  to={tool.path}
+                                  onClick={() => {
+                                    setToolsOpen(false);
+                                    setMobileMenuOpen(false);
+                                  }}
+                                  className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
+                                >
+                                  <span className="text-base flex-shrink-0">{tool.icon}</span>
+                                  <span className="text-xs truncate">{tool.name}</span>
+                                </Link>
+                              );
+                            }
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <Link
                       to="/my-dashboard"
                       onClick={() => setMobileMenuOpen(false)}
@@ -292,62 +359,6 @@ const Navigation = ({
                 )}
               </>
             )}
-            <div className="px-4 py-2">
-              <button
-                onClick={() => {
-                  setToolsOpen(!toolsOpen);
-                }}
-                className="w-full text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center justify-between"
-              >
-                <span>Tools</span>
-                <svg
-                  className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {toolsOpen && (
-                <div className="mt-2 space-y-1 pl-4 z-50 relative">
-                  {tools.map((tool) => {
-                    if (tool.endpoint) {
-                      return (
-                        <Link
-                          key={tool.name}
-                          to={tool.path}
-                          state={{ selectedEndpoint: tool.endpoint }}
-                          onClick={() => {
-                            setToolsOpen(false);
-                            setMobileMenuOpen(false);
-                          }}
-                          className="block w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
-                        >
-                          <span className="text-lg">{tool.icon}</span>
-                          <span>{tool.name}</span>
-                        </Link>
-                      );
-                    } else {
-                      return (
-                        <Link
-                          key={tool.name}
-                          to={tool.path}
-                          onClick={() => {
-                            setToolsOpen(false);
-                            setMobileMenuOpen(false);
-                          }}
-                          className="block w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
-                        >
-                          <span className="text-lg">{tool.icon}</span>
-                          <span>{tool.name}</span>
-                        </Link>
-                      );
-                    }
-                  })}
-                </div>
-              )}
-            </div>
           </div>
         )}
       </div>
