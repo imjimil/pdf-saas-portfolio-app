@@ -47,6 +47,22 @@ export const authAPI = {
     const response = await api.post('/auth/login', { email, password });
     return response.data;
   },
+  getProfile: async () => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
+  updateProfile: async (name: string) => {
+    const response = await api.put('/auth/profile', { name });
+    return response.data;
+  },
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const response = await api.put('/auth/password', { currentPassword, newPassword });
+    return response.data;
+  },
+  deleteAccount: async () => {
+    const response = await api.delete('/auth/account');
+    return response.data;
+  },
 };
 
 export const pdfAPI = {
@@ -137,6 +153,145 @@ export const pdfAPI = {
     const response = await api.post('/pdf/compress', formData, {
       responseType: 'blob',
     });
+    return response.data;
+  },
+  watermark: async (file: File, watermarkText: string, options?: {
+    position?: string;
+    opacity?: number;
+    fontSize?: number;
+    rotation?: number;
+  }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('watermarkText', watermarkText);
+    if (options?.position) formData.append('position', options.position);
+    if (options?.opacity !== undefined) formData.append('opacity', options.opacity.toString());
+    if (options?.fontSize) formData.append('fontSize', options.fontSize.toString());
+    if (options?.rotation !== undefined) formData.append('rotation', options.rotation.toString());
+    try {
+      const response = await api.post('/pdf/watermark', formData, {
+        responseType: 'blob',
+      });
+      // Check if response is actually an error JSON blob
+      if (response.data.type && response.data.type.includes('application/json')) {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || 'Failed to watermark PDF');
+      }
+      return response.data;
+    } catch (error: any) {
+      // If it's a blob error response, try to parse it
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Failed to watermark PDF');
+        } catch (parseError) {
+          // If parsing fails, check status code for more info
+          const status = error.response?.status;
+          const statusText = error.response?.statusText;
+          throw new Error(`Failed to watermark PDF (${status} ${statusText})`);
+        }
+      }
+      // If it's a regular error response with data
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  },
+  protect: async (file: File, password: string, options?: {
+    ownerPassword?: string;
+    allowPrinting?: string;
+    allowModifying?: string;
+    allowCopying?: string;
+    allowAnnotating?: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('password', password);
+    if (options?.ownerPassword) formData.append('ownerPassword', options.ownerPassword);
+    if (options?.allowPrinting) formData.append('allowPrinting', options.allowPrinting);
+    if (options?.allowModifying) formData.append('allowModifying', options.allowModifying);
+    if (options?.allowCopying) formData.append('allowCopying', options.allowCopying);
+    if (options?.allowAnnotating) formData.append('allowAnnotating', options.allowAnnotating);
+    try {
+      const response = await api.post('/pdf/protect', formData, {
+        responseType: 'blob',
+      });
+      // Check if response is actually an error JSON blob
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || 'Failed to protect PDF');
+      }
+      return response.data;
+    } catch (error: any) {
+      // If it's a blob error response, try to parse it
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Failed to protect PDF');
+        } catch {
+          throw new Error('Failed to protect PDF');
+        }
+      }
+      throw error;
+    }
+  },
+};
+
+export const fileAPI = {
+  getHistory: async (page: number = 1, limit: number = 20, filters?: {
+    operation?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    
+    if (filters?.operation) {
+      params.append('operation', filters.operation);
+    }
+    if (filters?.startDate) {
+      params.append('startDate', filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append('endDate', filters.endDate);
+    }
+    
+    const response = await api.get(`/files/history?${params.toString()}`);
+    return response.data;
+  },
+  
+  getFile: async (id: string) => {
+    const response = await api.get(`/files/${id}`);
+    return response.data;
+  },
+  
+  deleteFile: async (id: string) => {
+    const response = await api.delete(`/files/${id}`);
+    return response.data;
+  },
+  
+  downloadFile: async (id: string) => {
+    const response = await api.get(`/files/${id}/download`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};
+
+export const analyticsAPI = {
+  getUsage: async (days: number = 30) => {
+    const response = await api.get(`/analytics/usage?days=${days}`);
+    return response.data;
+  },
+  getOperations: async (days: number = 30) => {
+    const response = await api.get(`/analytics/operations?days=${days}`);
     return response.data;
   },
 };

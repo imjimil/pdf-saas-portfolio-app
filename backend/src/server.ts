@@ -9,6 +9,9 @@ import passport from 'passport';
 import session from 'express-session';
 import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdf';
+import fileRoutes from './routes/files';
+import analyticsRoutes from './routes/analytics';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
@@ -35,11 +38,17 @@ app.use(passport.session());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/pdf', pdfRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Mypdftools API is running' });
 });
+
+// Error handling middleware (must be last)
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // Start server first, then connect to MongoDB (so server starts even if MongoDB is down)
 app.listen(PORT, '0.0.0.0', () => {

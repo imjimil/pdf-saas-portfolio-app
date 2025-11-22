@@ -3,6 +3,10 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import UserDashboard from './pages/UserDashboard';
+import Profile from './pages/Profile';
+import WatermarkPDF from './pages/WatermarkPDF';
+import ProtectPDF from './pages/ProtectPDF';
 import SplitPDF from './pages/SplitPDF';
 import MergePDF from './pages/MergePDF';
 import AuthCallback from './pages/AuthCallback';
@@ -22,6 +26,38 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-dashboard"
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/watermark-pdf"
+          element={
+            <ProtectedRoute>
+              <WatermarkPDF />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/protect-pdf"
+          element={
+            <ProtectedRoute>
+              <ProtectPDF />
             </ProtectedRoute>
           }
         />

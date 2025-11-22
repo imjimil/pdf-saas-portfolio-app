@@ -19,6 +19,8 @@ const tools = [
   { name: 'PDF to Text', icon: '📝', path: '/dashboard', endpoint: 'txt' },
   { name: 'PDF to EPUB', icon: '📚', path: '/dashboard', endpoint: 'epub' },
   { name: 'PDF OCR', icon: '👁️', path: '/dashboard', endpoint: 'ocr' },
+  { name: 'Watermark PDF', icon: '💧', path: '/watermark-pdf' },
+  { name: 'Protect PDF', icon: '🔒', path: '/protect-pdf' },
 ];
 
 const Navigation = ({ 
@@ -134,15 +136,29 @@ const Navigation = ({
             {showAuth && (
               <>
                 {isAuthenticated ? (
-                  <button
-                    onClick={() => {
-                      logout();
-                      navigate('/');
-                    }}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                  >
-                    Logout
-                  </button>
+                  <>
+                    <Link
+                      to="/my-dashboard"
+                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/profile"
+                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        navigate('/');
+                      }}
+                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                    >
+                      Logout
+                    </button>
+                  </>
                 ) : (
                   <>
                     <Link

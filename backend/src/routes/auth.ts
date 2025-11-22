@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../models/User';
+import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -238,6 +239,125 @@ if (googleClientId && googleClientSecret) {
     res.status(503).json({ message: 'Google OAuth is not configured' });
   });
 }
+
+// Get current user profile
+router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.userId || req.isGuest) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user });
+  } catch (error: any) {
+    console.error('Get user error:', error);
+    res.status(500).json({ message: error.message || 'Failed to get user' });
+  }
+});
+
+// Update user profile (name)
+router.put('/profile', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.userId || req.isGuest) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const { name } = req.body;
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (name !== undefined) {
+      user.name = name;
+      await user.save();
+    }
+
+    res.json({ message: 'Profile updated successfully', user: { id: user._id, email: user.email, name: user.name } });
+  } catch (error: any) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update profile' });
+  }
+});
+
+// Change password
+router.put('/password', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.userId || req.isGuest) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has a password (not OAuth-only user)
+    if (!user.password) {
+      return res.status(400).json({ message: 'This account was created with Google. Password cannot be changed.' });
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Update password
+    user.password = newPassword;
+    user.markModified('password');
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error: any) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: error.message || 'Failed to change password' });
+  }
+});
+
+// Delete account
+router.delete('/account', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.userId || req.isGuest) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Delete user's files from history
+    const File = (await import('../models/File')).default;
+    await File.deleteMany({ userId: req.userId });
+
+    // Delete user's usage records
+    const Usage = (await import('../models/Usage')).default;
+    await Usage.deleteMany({ userId: req.userId });
+
+    // Delete user account
+    await User.deleteOne({ _id: req.userId });
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete account' });
+  }
+});
 
 export default router;
 

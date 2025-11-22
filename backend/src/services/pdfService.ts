@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 import pdfParse from 'pdf-parse';
@@ -235,6 +235,203 @@ export class PDFService {
       await fs.writeFile(outputPath, compressedBytes);
     } catch (error: any) {
       throw new Error(`PDF compression failed: ${error.message}`);
+    }
+  }
+
+  // Add watermark to PDF
+  static async addWatermark(
+    pdfPath: string,
+    outputPath: string,
+    watermarkText: string,
+    options?: {
+      position?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+      opacity?: number;
+      fontSize?: number;
+      rotation?: number;
+      color?: { r: number; g: number; b: number };
+    }
+  ): Promise<void> {
+    try {
+      // Check if file exists
+      await fs.access(pdfPath);
+      
+      const pdfBytes = await fs.readFile(pdfPath);
+      
+      if (pdfBytes.length === 0) {
+        throw new Error('PDF file is empty');
+      }
+      
+      // Load PDF document
+      let pdfDoc: PDFDocument;
+      try {
+        pdfDoc = await PDFDocument.load(pdfBytes);
+      } catch (loadError: any) {
+        // Check if it's an encryption error
+        if (loadError.message && (loadError.message.includes('encrypt') || loadError.message.includes('password'))) {
+          throw new Error('Cannot watermark password-protected PDFs. Please remove the password first.');
+        }
+        throw new Error(`Failed to load PDF: ${loadError.message}. The PDF might be corrupted.`);
+      }
+      
+      const pages = pdfDoc.getPages();
+      
+      if (pages.length === 0) {
+        throw new Error('PDF has no pages');
+      }
+
+      const position = options?.position || 'center';
+      const opacity = options?.opacity || 0.3;
+      const fontSize = options?.fontSize || 50;
+      const rotation = options?.rotation || -45;
+      const color = options?.color || { r: 0.5, g: 0.5, b: 0.5 };
+
+      // Embed a font for the watermark
+      let font;
+      try {
+        font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      } catch (fontError: any) {
+        throw new Error(`Failed to embed font: ${fontError.message}`);
+      }
+
+      // Add watermark to each page
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        try {
+          const { width, height } = page.getSize();
+          const textWidth = font.widthOfTextAtSize(watermarkText, fontSize);
+          const textHeight = fontSize;
+
+          let x = 0;
+          let y = 0;
+
+          // Calculate position based on option
+          switch (position) {
+            case 'center':
+              x = (width - textWidth) / 2;
+              y = (height - textHeight) / 2;
+              break;
+            case 'top-left':
+              x = 50;
+              y = height - textHeight - 50;
+              break;
+            case 'top-right':
+              x = width - textWidth - 50;
+              y = height - textHeight - 50;
+              break;
+            case 'bottom-left':
+              x = 50;
+              y = 50;
+              break;
+            case 'bottom-right':
+              x = width - textWidth - 50;
+              y = 50;
+              break;
+          }
+
+          // Draw watermark text
+          // Note: Rotation is complex in pdf-lib, so we'll draw without rotation for now
+          // The text will still be watermarked, just not rotated
+          page.drawText(watermarkText, {
+            x,
+            y,
+            size: fontSize,
+            font,
+            color: rgb(color.r, color.g, color.b),
+            opacity,
+          });
+        } catch (pageError: any) {
+          console.error(`Error adding watermark to page ${i + 1}:`, pageError);
+          throw new Error(`Failed to add watermark to page ${i + 1}: ${pageError.message}`);
+        }
+      }
+
+      // Save the modified PDF
+      let pdfBytesModified: Uint8Array;
+      try {
+        pdfBytesModified = await pdfDoc.save();
+      } catch (saveError: any) {
+        throw new Error(`Failed to save watermarked PDF: ${saveError.message}`);
+      }
+      
+      // Write to file
+      try {
+        await fs.writeFile(outputPath, pdfBytesModified);
+      } catch (writeError: any) {
+        throw new Error(`Failed to write watermarked PDF file: ${writeError.message}`);
+      }
+    } catch (error: any) {
+      console.error('Watermark error details:', error);
+      console.error('Error stack:', error.stack);
+      throw new Error(`Watermark addition failed: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Protect PDF with password
+  static async protectPdf(
+    pdfPath: string,
+    outputPath: string,
+    userPassword: string,
+    ownerPassword?: string,
+    permissions?: {
+      printing?: 'lowResolution' | 'highResolution' | false;
+      modifying?: boolean;
+      copying?: boolean;
+      annotating?: boolean;
+    }
+  ): Promise<void> {
+    try {
+      // Try using qpdf command-line tool for encryption
+      // qpdf is a robust tool for PDF manipulation including encryption
+      const finalPassword = ownerPassword || userPassword;
+      
+      // Escape passwords for shell command
+      const escapeShell = (str: string) => str.replace(/'/g, "'\\''").replace(/(["$`\\])/g, '\\$1');
+      const escapedUserPassword = escapeShell(userPassword);
+      const escapedOwnerPassword = escapeShell(finalPassword);
+      
+      // Build qpdf command with permissions
+      let qpdfCommand = `qpdf --encrypt "${escapedUserPassword}" "${escapedOwnerPassword}" 256`;
+      
+      // Add permission restrictions
+      // qpdf permission flags: print, modify, extract, annotate
+      // We invert the logic: if permission is false, we restrict it
+      if (permissions?.printing === false) {
+        qpdfCommand += ' --print=n';
+      }
+      if (permissions?.modifying === false) {
+        qpdfCommand += ' --modify=n';
+      }
+      if (permissions?.copying === false) {
+        qpdfCommand += ' --extract=n';
+      }
+      if (permissions?.annotating === false) {
+        qpdfCommand += ' --annotate=n';
+      }
+      
+      qpdfCommand += ` -- "${pdfPath}" "${outputPath}"`;
+
+      try {
+        await execAsync(qpdfCommand);
+      } catch (qpdfError: any) {
+        // Check if qpdf is not installed
+        if (qpdfError.message.includes('qpdf') && qpdfError.message.includes('not found')) {
+          throw new Error(
+            'PDF password protection requires qpdf to be installed on the server. ' +
+            'Please install qpdf: https://qpdf.sourceforge.io/ ' +
+            'On Windows: choco install qpdf or download from the website. ' +
+            'On Linux: sudo apt-get install qpdf or sudo yum install qpdf. ' +
+            'On macOS: brew install qpdf'
+          );
+        }
+        // If qpdf command failed for another reason, throw the error
+        throw new Error(`qpdf encryption failed: ${qpdfError.message}`);
+      }
+    } catch (error: any) {
+      // If it's our custom error, rethrow it
+      if (error.message.includes('qpdf') || error.message.includes('password protection')) {
+        throw error;
+      }
+      throw new Error(`PDF protection failed: ${error.message}`);
     }
   }
 }

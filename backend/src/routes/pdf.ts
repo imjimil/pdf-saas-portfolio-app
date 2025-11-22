@@ -8,6 +8,7 @@ import archiver from 'archiver';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { PDFService } from '../services/pdfService';
 import { OCRService } from '../services/ocrService';
+import { saveFileHistory } from '../utils/fileHistory';
 
 const router = express.Router();
 
@@ -45,7 +46,12 @@ const upload = multer({
 });
 
 // Helper function to clean up files
-const cleanupFiles = async (filePaths: string[]) => {
+const cleanupFiles = async (filePaths: string[], keepForAuth: boolean = false, userId?: string) => {
+  // For authenticated users, keep files for history
+  if (keepForAuth && userId) {
+    return;
+  }
+  
   for (const filePath of filePaths) {
     try {
       await fs.unlink(filePath);
@@ -69,12 +75,26 @@ router.post(
       const outputPath = req.file.path.replace('.pdf', '.txt');
       await PDFService.pdfToWord(req.file.path, outputPath);
       
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'word',
+        fileSize,
+      });
+      
       res.download(outputPath, 'extracted_text.txt', (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([req.file!.path, outputPath]);
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
       });
     } catch (error: any) {
       // If it's a text extraction (our custom message), still send the file
@@ -85,11 +105,26 @@ router.post(
           const pdfData = await pdfParse(dataBuffer);
           await fs.writeFile(txtPath, pdfData.text || 'No text found');
           
+          // Get file size
+          const stats = await fs.stat(txtPath);
+          const fileSize = stats.size;
+          
+          // Save file history for authenticated users
+          await saveFileHistory({
+            userId: req.userId,
+            isGuest: req.isGuest,
+            originalFileName: req.file.originalname,
+            processedFilePath: txtPath,
+            operation: 'word',
+            fileSize,
+          });
+          
           res.download(txtPath, 'extracted_text.txt', (err) => {
             if (err) {
               console.error('Download error:', err);
             }
-            cleanupFiles([req.file!.path, txtPath]);
+            // Cleanup only for guest users
+            cleanupFiles([req.file!.path, txtPath], !!req.userId && !req.isGuest, req.userId);
           });
         } catch (fallbackError: any) {
           cleanupFiles([req.file.path]);
@@ -117,12 +152,26 @@ router.post(
       const outputPath = req.file.path.replace(path.extname(req.file.path), '.pdf');
       await PDFService.imageToPdf(req.file.path, outputPath);
       
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'pdf',
+        fileSize,
+      });
+      
       res.download(outputPath, (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([req.file!.path, outputPath]);
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
       });
     } catch (error: any) {
       cleanupFiles([req.file.path]);
@@ -158,16 +207,34 @@ router.post(
       // Always send the single combined PDF file
       // (When pageRanges are specified, all pages are combined into one file)
       if (outputFiles.length > 0) {
-        const fileName = parsedRanges ? 'split_pages.pdf' : path.basename(outputFiles[0]);
-        res.download(outputFiles[0], fileName, async (err) => {
+        const outputFile = outputFiles[0];
+        const fileName = parsedRanges ? 'split_pages.pdf' : path.basename(outputFile);
+        
+        // Get file size
+        const stats = await fs.stat(outputFile);
+        const fileSize = stats.size;
+        
+        // Save file history for authenticated users
+        await saveFileHistory({
+          userId: req.userId,
+          isGuest: req.isGuest,
+          originalFileName: req.file.originalname,
+          processedFilePath: outputFile,
+          operation: 'split',
+          fileSize,
+        });
+        
+        res.download(outputFile, fileName, async (err) => {
           if (err) {
             console.error('Download error:', err);
           }
-          // Cleanup
-          cleanupFiles([req.file!.path, ...outputFiles]);
-          try {
-            await fs.rm(outputDir, { recursive: true, force: true });
-          } catch {}
+          // Cleanup only for guest users
+          if (req.isGuest || !req.userId) {
+            cleanupFiles([req.file!.path, ...outputFiles]);
+            try {
+              await fs.rm(outputDir, { recursive: true, force: true });
+            } catch {}
+          }
         });
       }
     } catch (error: any) {
@@ -191,12 +258,26 @@ router.post(
       const outputPath = req.file.path.replace('.pdf', '.txt');
       await PDFService.pdfToTxt(req.file.path, outputPath);
       
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'txt',
+        fileSize,
+      });
+      
       res.download(outputPath, (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([req.file!.path, outputPath]);
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
       });
     } catch (error: any) {
       cleanupFiles([req.file.path]);
@@ -219,12 +300,26 @@ router.post(
       const outputPath = req.file.path.replace('.pdf', '.epub');
       await PDFService.pdfToEpub(req.file.path, outputPath);
       
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'epub',
+        fileSize,
+      });
+      
       res.download(outputPath, (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([req.file!.path, outputPath]);
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
       });
     } catch (error: any) {
       cleanupFiles([req.file.path]);
@@ -247,12 +342,26 @@ router.post(
       const outputPath = req.file.path.replace('.pdf', '_ocr.txt');
       await OCRService.processPdfWithOcr(req.file.path, outputPath);
       
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'ocr',
+        fileSize,
+      });
+      
       res.download(outputPath, (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([req.file!.path, outputPath]);
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
       });
     } catch (error: any) {
       cleanupFiles([req.file.path]);
@@ -290,16 +399,32 @@ router.post(
       const pdfPaths = files.map((file) => file.path);
       await PDFService.mergePdfs(pdfPaths, outputPath);
 
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: `merged_${files.length}_files.pdf`,
+        processedFilePath: outputPath,
+        operation: 'merge',
+        fileSize,
+      });
+
       res.download(outputPath, 'merged.pdf', async (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([...pdfPaths, outputPath]);
-        try {
-          await fs.rm(outputDir, { recursive: true, force: true });
-        } catch (cleanupError) {
-          console.error('Cleanup error:', cleanupError);
+        // Cleanup only for guest users
+        if (req.isGuest || !req.userId) {
+          cleanupFiles([...pdfPaths, outputPath]);
+          try {
+            await fs.rm(outputDir, { recursive: true, force: true });
+          } catch (cleanupError) {
+            console.error('Cleanup error:', cleanupError);
+          }
         }
       });
     } catch (error: any) {
@@ -326,12 +451,214 @@ router.post(
       const outputPath = req.file.path.replace('.pdf', '_compressed.pdf');
       await PDFService.compressPdf(req.file.path, outputPath);
       
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+      
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'compress',
+        fileSize,
+      });
+      
       res.download(outputPath, (err) => {
         if (err) {
           console.error('Download error:', err);
         }
-        // Cleanup
-        cleanupFiles([req.file!.path, outputPath]);
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
+      });
+    } catch (error: any) {
+      cleanupFiles([req.file.path]);
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+// Watermark PDF
+router.post(
+  '/watermark',
+  authenticate,
+  (req, res, next) => {
+    // Log incoming request for debugging
+    console.log('Watermark route - Request received:', {
+      method: req.method,
+      contentType: req.headers['content-type'],
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+    });
+    next();
+  },
+  (req, res, next) => {
+    upload.single('file')(req, res, (err: any) => {
+      if (err) {
+        console.error('Multer error:', err);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: 'File too large. Maximum size is 50MB.' });
+        }
+        return res.status(400).json({ message: err.message || 'File upload error' });
+      }
+      next();
+    });
+  },
+  async (req: AuthRequest, res: Response) => {
+    // Log after multer processing
+    console.log('After multer - Request body:', req.body);
+    console.log('After multer - File:', req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    } : 'No file');
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    try {
+      const { watermarkText, position, opacity, fontSize, rotation } = req.body;
+      
+      console.log('Extracted form fields:', {
+        watermarkText,
+        position,
+        opacity,
+        fontSize,
+        rotation,
+      });
+      
+      if (!watermarkText || !watermarkText.trim()) {
+        cleanupFiles([req.file.path]);
+        return res.status(400).json({ message: 'Watermark text is required' });
+      }
+
+      // Validate file is PDF
+      if (req.file.mimetype !== 'application/pdf') {
+        cleanupFiles([req.file.path]);
+        return res.status(400).json({ message: 'File must be a PDF' });
+      }
+
+      // Ensure output path has .pdf extension
+      const outputPath = req.file.path.endsWith('.pdf') 
+        ? req.file.path.replace('.pdf', '_watermarked.pdf')
+        : req.file.path + '_watermarked.pdf';
+      
+      console.log('Starting watermark process:', {
+        inputPath: req.file.path,
+        outputPath,
+        watermarkText,
+        position,
+        opacity,
+        fontSize,
+      });
+      
+      await PDFService.addWatermark(req.file.path, outputPath, watermarkText.trim(), {
+        position: position || 'center',
+        opacity: opacity ? parseFloat(opacity) : 0.3,
+        fontSize: fontSize ? parseInt(fontSize) : 50,
+        rotation: rotation ? parseFloat(rotation) : -45,
+      });
+
+      // Verify output file was created
+      try {
+        await fs.access(outputPath);
+      } catch {
+        throw new Error('Watermarked PDF was not created');
+      }
+
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'watermark',
+        fileSize,
+      });
+
+      res.download(outputPath, (err) => {
+        if (err) {
+          console.error('Download error:', err);
+        }
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
+      });
+    } catch (error: any) {
+      console.error('Watermark route error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Clean up input file
+      try {
+        cleanupFiles([req.file.path]);
+      } catch (cleanupErr) {
+        console.error('Cleanup error:', cleanupErr);
+      }
+      
+      // Ensure we send JSON response, not blob
+      const errorMessage = error.message || 'Failed to add watermark to PDF';
+      console.error('Sending error response:', errorMessage);
+      res.status(500).json({ message: errorMessage });
+    }
+  }
+);
+
+// Protect PDF with password
+router.post(
+  '/protect',
+  authenticate,
+  upload.single('file'),
+  async (req: AuthRequest, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    try {
+      const { password, ownerPassword, allowPrinting, allowModifying, allowCopying, allowAnnotating } = req.body;
+      
+      if (!password) {
+        cleanupFiles([req.file.path]);
+        return res.status(400).json({ message: 'Password is required' });
+      }
+
+      // Ensure output path has .pdf extension
+      const outputPath = req.file.path.endsWith('.pdf')
+        ? req.file.path.replace('.pdf', '_protected.pdf')
+        : req.file.path + '_protected.pdf';
+      
+      await PDFService.protectPdf(req.file.path, outputPath, password, ownerPassword, {
+        printing: allowPrinting === 'false' ? false : allowPrinting === 'low' ? 'lowResolution' : 'highResolution',
+        modifying: allowModifying !== 'false',
+        copying: allowCopying !== 'false',
+        annotating: allowAnnotating !== 'false',
+      });
+
+      // Get file size
+      const stats = await fs.stat(outputPath);
+      const fileSize = stats.size;
+
+      // Save file history for authenticated users
+      await saveFileHistory({
+        userId: req.userId,
+        isGuest: req.isGuest,
+        originalFileName: req.file.originalname,
+        processedFilePath: outputPath,
+        operation: 'protect',
+        fileSize,
+      });
+
+      res.download(outputPath, (err) => {
+        if (err) {
+          console.error('Download error:', err);
+        }
+        // Cleanup only for guest users
+        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
       });
     } catch (error: any) {
       cleanupFiles([req.file.path]);
