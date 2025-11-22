@@ -10,7 +10,7 @@ const Landing = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors w-full overflow-x-hidden">
       <Navigation showAuth={true} />
 
       <Hero isAuthenticated={isAuthenticated} />

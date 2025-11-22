@@ -20,7 +20,7 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section className="relative py-20 bg-cream-light dark:bg-gray-900 transition-colors overflow-hidden">
+    <section className="relative py-12 sm:py-20 bg-cream-light dark:bg-gray-900 transition-colors overflow-hidden w-full">
       {/* Decorative elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <motion.div

@@ -249,43 +249,73 @@ const Dashboard = () => {
       <Navigation showAuth={true} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6 md:mb-8">Dashboard</h1>
-
-        {/* Step 1: Select Operation */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 mb-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white mb-3 md:mb-4">
-            Step 1: Choose an Operation
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {features.map((feature) => (
+        {selectedOperation ? (
+          <>
+            {/* Header with selected tool and back button */}
+            <div className="flex items-center gap-4 mb-6">
               <button
-                key={feature.title}
-                onClick={() => handleOperationSelect(feature)}
-                className={`p-3 md:p-4 rounded-lg border-2 transition text-left ${
-                  selectedOperation?.endpoint === feature.endpoint
-                    ? 'border-green-primary bg-green-50 dark:bg-green-900/20 dark:border-green-light'
-                    : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 hover:border-green-primary dark:hover:border-green-light hover:bg-green-50 dark:hover:bg-green-900/10'
-                }`}
+                onClick={() => {
+                  setSelectedOperation(null);
+                  setSelectedFile(null);
+                  setDownloadUrl(null);
+                  setError('');
+                  navigate('/tools');
+                }}
+                className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
               >
-                <div className="flex flex-col items-center text-center space-y-2 md:flex-row md:items-start md:space-x-3 md:space-y-0">
-                  <span className="text-2xl md:text-2xl">{feature.icon}</span>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-0.5 md:mb-1">
-                      {feature.title}
-                    </h3>
-                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 md:line-clamp-none">{feature.description}</p>
-                  </div>
-                </div>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
               </button>
-            ))}
-          </div>
-        </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                  {selectedOperation.icon} {selectedOperation.title}
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">{selectedOperation.description}</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6 md:mb-8">Dashboard</h1>
+            
+            {/* Step 1: Select Operation - Only show if no operation selected */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 mb-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white mb-3 md:mb-4">
+                Choose an Operation
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {features.map((feature) => (
+                  <button
+                    key={feature.title}
+                    onClick={() => handleOperationSelect(feature)}
+                    className={`p-3 md:p-4 rounded-lg border-2 transition text-left ${
+                      selectedOperation?.endpoint === feature.endpoint
+                        ? 'border-green-primary bg-green-50 dark:bg-green-900/20 dark:border-green-light'
+                        : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 hover:border-green-primary dark:hover:border-green-light hover:bg-green-50 dark:hover:bg-green-900/10'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center text-center space-y-2 md:flex-row md:items-start md:space-x-3 md:space-y-0">
+                      <span className="text-2xl md:text-2xl">{feature.icon}</span>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-0.5 md:mb-1">
+                          {feature.title}
+                        </h3>
+                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 md:line-clamp-none">{feature.description}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Step 2: Upload File */}
         {selectedOperation && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 mb-6 border border-gray-200 dark:border-gray-700">
             <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white mb-3 md:mb-4">
-              Step 2: Upload {selectedOperation.requires} File
+              Upload {selectedOperation.requires} File
             </h2>
             <FileUpload
               key={selectedOperation.endpoint}
@@ -312,7 +342,7 @@ const Dashboard = () => {
         {selectedOperation && selectedFile && !downloadUrl && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-6 mb-6 border border-gray-200 dark:border-gray-700">
             <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white mb-3 md:mb-4">
-              Step 3: Process File
+              Process File
             </h2>
             <button
               type="button"
@@ -378,6 +408,7 @@ const Dashboard = () => {
                       setDownloadFileName('');
                       setSelectedFile(null);
                       setSelectedOperation(null);
+                      navigate('/tools');
                     }}
                     className="px-6 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition font-semibold border border-gray-300 dark:border-gray-600"
                   >

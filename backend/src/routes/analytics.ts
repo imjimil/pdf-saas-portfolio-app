@@ -34,17 +34,17 @@ router.get(
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      // Get usage records
-      const usageRecords = await Usage.find({
+      // Aggregate from File model (more reliable than Usage model)
+      const fileRecords = await File.find({
         userId,
-        date: { $gte: startDate },
-      }).sort({ date: 1 });
+        createdAt: { $gte: startDate },
+      }).sort({ createdAt: 1 });
 
       // Aggregate by date
       const dailyUsage: { [key: string]: { date: string; fileCount: number; totalSize: number } } = {};
       
-      usageRecords.forEach((record) => {
-        const dateKey = record.date.toISOString().split('T')[0];
+      fileRecords.forEach((file) => {
+        const dateKey = file.createdAt.toISOString().split('T')[0];
         if (!dailyUsage[dateKey]) {
           dailyUsage[dateKey] = {
             date: dateKey,
@@ -52,8 +52,8 @@ router.get(
             totalSize: 0,
           };
         }
-        dailyUsage[dateKey].fileCount += record.fileCount;
-        dailyUsage[dateKey].totalSize += record.totalFileSize;
+        dailyUsage[dateKey].fileCount += 1;
+        dailyUsage[dateKey].totalSize += file.fileSize || 0;
       });
 
       // Convert to array

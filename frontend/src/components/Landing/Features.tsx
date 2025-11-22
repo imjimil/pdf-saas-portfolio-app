@@ -57,7 +57,7 @@ const Features = () => {
   };
 
   return (
-    <section className="relative py-20 bg-white dark:bg-gray-800 transition-colors overflow-hidden">
+    <section className="relative py-12 sm:py-20 bg-white dark:bg-gray-800 transition-colors overflow-hidden w-full">
       {/* Subtle background pattern */}
       <div className="absolute inset-0 opacity-5 dark:opacity-10">
         <div className="absolute inset-0" style={{

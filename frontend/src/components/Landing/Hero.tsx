@@ -7,12 +7,12 @@ interface HeroProps {
 
 const Hero = ({ isAuthenticated = false }: HeroProps) => {
   return (
-    <section className="relative bg-cream-light dark:bg-gray-900 py-20 lg:py-32 transition-colors overflow-hidden">
+    <section className="relative bg-cream-light dark:bg-gray-900 py-12 sm:py-20 lg:py-32 transition-colors overflow-hidden w-full">
       {/* Abstract Background Art */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none w-full">
         {/* Animated gradient circles */}
         <motion.div
-          className="absolute -top-40 -right-40 w-96 h-96 bg-green-primary/10 dark:bg-green-light/10 rounded-full blur-3xl"
+          className="absolute -top-40 -right-40 w-64 h-64 sm:w-96 sm:h-96 bg-green-primary/10 dark:bg-green-light/10 rounded-full blur-3xl"
           animate={{
             x: [0, 50, 0],
             y: [0, 30, 0],
@@ -25,7 +25,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
           }}
         />
         <motion.div
-          className="absolute -bottom-40 -left-40 w-96 h-96 bg-green-primary/10 dark:bg-green-light/10 rounded-full blur-3xl"
+          className="absolute -bottom-40 -left-40 w-64 h-64 sm:w-96 sm:h-96 bg-green-primary/10 dark:bg-green-light/10 rounded-full blur-3xl"
           animate={{
             x: [0, -50, 0],
             y: [0, -30, 0],
@@ -39,7 +39,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
         />
         {/* Geometric shapes */}
         <motion.div
-          className="absolute top-20 left-10 w-32 h-32 border-4 border-green-primary/20 dark:border-green-light/20 rounded-lg rotate-45"
+          className="absolute top-20 left-4 sm:left-10 w-24 h-24 sm:w-32 sm:h-32 border-4 border-green-primary/20 dark:border-green-light/20 rounded-lg rotate-45"
           animate={{
             rotate: [45, 405, 45],
             scale: [1, 1.2, 1],
@@ -51,7 +51,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
           }}
         />
         <motion.div
-          className="absolute bottom-20 right-10 w-24 h-24 border-4 border-green-primary/20 dark:border-green-light/20 rounded-full"
+          className="absolute bottom-20 right-4 sm:right-10 w-16 h-16 sm:w-24 sm:h-24 border-4 border-green-primary/20 dark:border-green-light/20 rounded-full"
           animate={{
             scale: [1, 1.3, 1],
             opacity: [0.3, 0.6, 0.3],
@@ -85,7 +85,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
         ))}
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -128,7 +128,7 @@ const Hero = ({ isAuthenticated = false }: HeroProps) => {
               whileTap={{ scale: 0.95 }}
             >
               <Link
-                to={isAuthenticated ? "/dashboard" : "/register"}
+                to={isAuthenticated ? "/tools" : "/register"}
                 className="px-8 py-4 bg-green-primary dark:bg-green-dark text-white rounded-lg text-lg font-semibold hover:bg-green-dark dark:hover:bg-green-primary transition shadow-lg hover:shadow-xl inline-block"
               >
                 {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}

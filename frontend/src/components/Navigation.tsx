@@ -33,27 +33,37 @@ const Navigation = ({
   const { isDark, toggleDarkMode } = useDarkMode();
   const navigate = useNavigate();
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const toolsRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (desktop only)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (toolsRef.current && !toolsRef.current.contains(event.target as Node)) {
-        setToolsOpen(false);
+        // Only close if not clicking in mobile menu
+        if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+          setToolsOpen(false);
+        }
       }
     };
 
-    if (toolsOpen) {
+    if (toolsOpen && !mobileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [toolsOpen]);
+  }, [toolsOpen, mobileMenuOpen]);
 
-  const handleToolClick = (tool: typeof tools[0]) => {
+  const handleToolClick = (tool: typeof tools[0], closeMobileMenu: boolean = false) => {
+    // Close dropdowns first
     setToolsOpen(false);
+    if (closeMobileMenu) {
+      setMobileMenuOpen(false);
+    }
+    // Navigate immediately
     if (tool.endpoint) {
       navigate(tool.path, { state: { selectedEndpoint: tool.endpoint } });
     } else {
@@ -68,17 +78,19 @@ const Navigation = ({
           <div className="flex items-center">
             <Link 
               to="/" 
-              className="text-2xl font-bold text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
+              className="text-xl sm:text-2xl font-bold text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
             >
               My PDF Tools
             </Link>
           </div>
-          <div className="flex items-center space-x-4">
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {/* Tools Dropdown */}
             <div className="relative" ref={toolsRef}>
               <button
                 onClick={() => setToolsOpen(!toolsOpen)}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2"
+                className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2"
               >
                 <span>Tools</span>
                 <svg
@@ -92,11 +104,15 @@ const Navigation = ({
               </button>
               
               {toolsOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2 max-h-96 overflow-y-auto">
                   {tools.map((tool) => (
                     <button
                       key={tool.name}
-                      onClick={() => handleToolClick(tool)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleToolClick(tool, false);
+                      }}
                       className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2"
                     >
                       <span className="text-lg">{tool.icon}</span>
@@ -127,7 +143,7 @@ const Navigation = ({
             {showBack && (
               <button
                 onClick={() => navigate(backPath)}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
               >
                 {backLabel}
               </button>
@@ -138,14 +154,20 @@ const Navigation = ({
                 {isAuthenticated ? (
                   <>
                     <Link
-                      to="/my-dashboard"
-                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                      to="/tools"
+                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
                     >
-                      Dashboard
+                      Tools
+                    </Link>
+                    <Link
+                      to="/my-dashboard"
+                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                    >
+                      File History
                     </Link>
                     <Link
                       to="/profile"
-                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
                     >
                       Profile
                     </Link>
@@ -154,7 +176,7 @@ const Navigation = ({
                         logout();
                         navigate('/');
                       }}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
                     >
                       Logout
                     </button>
@@ -163,13 +185,13 @@ const Navigation = ({
                   <>
                     <Link
                       to="/login"
-                      className="px-4 py-2 text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
+                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
                     >
                       Login
                     </Link>
                     <Link
                       to="/register"
-                      className="px-4 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
+                      className="px-3 lg:px-4 py-2 text-sm lg:text-base bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
                     >
                       Get Started
                     </Link>
@@ -178,7 +200,156 @@ const Navigation = ({
               </>
             )}
           </div>
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden flex items-center space-x-2">
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div ref={mobileMenuRef} className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4 space-y-2 z-50 relative bg-white dark:bg-gray-800">
+            {showAuth && (
+              <>
+                {isAuthenticated ? (
+                  <>
+                    <Link
+                      to="/tools"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                      Tools
+                    </Link>
+                    <Link
+                      to="/my-dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                      File History
+                    </Link>
+                    <Link
+                      to="/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        navigate('/');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-green-primary dark:text-green-light hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      to="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
+                    >
+                      Get Started
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
+            <div className="px-4 py-2">
+              <button
+                onClick={() => {
+                  setToolsOpen(!toolsOpen);
+                }}
+                className="w-full text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center justify-between"
+              >
+                <span>Tools</span>
+                <svg
+                  className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {toolsOpen && (
+                <div className="mt-2 space-y-1 pl-4 z-50 relative">
+                  {tools.map((tool) => {
+                    if (tool.endpoint) {
+                      return (
+                        <Link
+                          key={tool.name}
+                          to={tool.path}
+                          state={{ selectedEndpoint: tool.endpoint }}
+                          onClick={() => {
+                            setToolsOpen(false);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="block w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
+                        >
+                          <span className="text-lg">{tool.icon}</span>
+                          <span>{tool.name}</span>
+                        </Link>
+                      );
+                    } else {
+                      return (
+                        <Link
+                          key={tool.name}
+                          to={tool.path}
+                          onClick={() => {
+                            setToolsOpen(false);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="block w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
+                        >
+                          <span className="text-lg">{tool.icon}</span>
+                          <span>{tool.name}</span>
+                        </Link>
+                      );
+                    }
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

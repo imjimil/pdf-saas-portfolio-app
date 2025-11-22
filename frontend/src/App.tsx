@@ -3,6 +3,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Tools from './pages/Tools';
 import UserDashboard from './pages/UserDashboard';
 import Profile from './pages/Profile';
 import WatermarkPDF from './pages/WatermarkPDF';
@@ -26,6 +27,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools"
+          element={
+            <ProtectedRoute>
+              <Tools />
             </ProtectedRoute>
           }
         />
