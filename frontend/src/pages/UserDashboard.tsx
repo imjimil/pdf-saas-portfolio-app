@@ -39,14 +39,13 @@ const operationLabels: { [key: string]: string } = {
 };
 
 const UserDashboard = () => {
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalFiles, setTotalFiles] = useState(0);
   const [stats, setStats] = useState({
     totalFiles: 0,
     totalSize: 0,
@@ -81,7 +80,6 @@ const UserDashboard = () => {
 
       setFiles(response.files);
       setTotalPages(response.pagination.pages);
-      setTotalFiles(response.pagination.total);
 
       // Calculate statistics
       const operationSet = new Set<string>();

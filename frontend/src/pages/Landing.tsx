@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import Hero from '../components/Landing/Hero';
 import Features from '../components/Landing/Features';

@@ -18,7 +18,9 @@ const AuthCallback = () => {
     }
 
     if (token && email) {
-      login({ email }, token);
+      // Generate a temporary id from email (backend should provide id, but this works for now)
+      const userId = email.split('@')[0] + '_' + Date.now();
+      login({ id: userId, email }, token);
       navigate('/tools');
     } else {
       navigate('/login?error=Authentication failed');

@@ -13,7 +13,6 @@ const SplitPDF = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pageRanges, setPageRanges] = useState<string>('');
-  const [totalPages, setTotalPages] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);

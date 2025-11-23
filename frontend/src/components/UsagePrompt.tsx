@@ -5,7 +5,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 
 const UsagePrompt = () => {
   const navigate = useNavigate();
-  const { maxGuestUses, resetUsage } = useUsageTracking();
+  const { maxGuestUses } = useUsageTracking();
   const { isDark } = useDarkMode();
   const [isVisible, setIsVisible] = useState(true);
 
