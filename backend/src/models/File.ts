@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IFile extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
   originalFileName: string;
   processedFileName: string;
   operation: string;
@@ -18,7 +18,7 @@ const fileSchema = new Schema<IFile>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // Optional for guest users
       index: true,
     },
     originalFileName: {

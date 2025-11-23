@@ -160,21 +160,52 @@ router.delete(
 router.get(
   '/:id/download',
   authenticate,
-  requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
+      const fileId = req.params.id;
       const userId = req.userId;
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
 
+      // Find file - allow access if user owns it OR if it's a recent OCR file (for guests)
       const file = await File.findOne({
-        _id: req.params.id,
-        userId,
+        _id: fileId,
+        ...(userId ? { userId } : {}), // If authenticated, must be owner
       });
+
+      // For guests, allow download if file was created recently (within last hour) and is OCR
+      if (!file && !userId) {
+        // Try to find recent OCR files for guests (created within last hour)
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const recentFile = await File.findOne({
+          _id: fileId,
+          operation: 'ocr',
+          createdAt: { $gte: oneHourAgo },
+        });
+        
+        if (recentFile) {
+          const filePath = path.join(
+            process.cwd(),
+            'uploads',
+            recentFile.processedFileName
+          );
+          try {
+            await fs.access(filePath);
+            res.download(filePath, recentFile.originalFileName);
+            return;
+          } catch (err) {
+            return res.status(404).json({
+              message: 'File no longer available for download',
+            });
+          }
+        }
+      }
 
       if (!file) {
         return res.status(404).json({ message: 'File not found' });
+      }
+
+      // For authenticated users, verify ownership
+      if (userId && file.userId?.toString() !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
       }
 
       // Check if file exists on disk

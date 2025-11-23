@@ -5,6 +5,9 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import pdfParse from 'pdf-parse';
 import archiver from 'archiver';
+import https from 'https';
+import http from 'http';
+import { URL } from 'url';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { PdfToWordService } from '../services/pdfToWordService';
 import { ImageToPdfService } from '../services/imageToPdfService';
@@ -439,33 +442,125 @@ router.post(
     }
 
     try {
-      const outputPath = req.file.path.replace('.pdf', '_ocr.txt');
-      await OCRService.processPdfWithOcr(req.file.path, outputPath);
-      
-      // Get file size
-      const stats = await fs.stat(outputPath);
-      const fileSize = stats.size;
-      
-      // Save file history for authenticated users
-      await saveFileHistory({
-        userId: req.userId,
-        isGuest: req.isGuest,
-        originalFileName: req.file.originalname,
-        processedFilePath: outputPath,
-        operation: 'ocr',
-        fileSize,
-      });
-      
-      res.download(outputPath, (err) => {
-        if (err) {
-          console.error('Download error:', err);
+      const createSearchablePdf = req.body.createSearchablePdf === 'true' || req.body.createSearchablePdf === true;
+
+      // If user wants searchable PDF, use OCR.space API to create it
+      if (createSearchablePdf) {
+        console.log('Creating searchable PDF...');
+        const file = req.file; // Store in variable for TypeScript type narrowing
+        const result = await OCRService.createSearchablePdf(file.path);
+        
+        // Download the searchable PDF from OCR.space URL
+        return new Promise<void>((resolve) => {
+          const parsedUrl = new URL(result.searchablePdfUrl);
+          const client = parsedUrl.protocol === 'https:' ? https : http;
+          
+          const options = {
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+          };
+          
+          client.get(options, (response: any) => {
+            if (response.statusCode !== 200) {
+              cleanupFiles([file.path]);
+              res.status(500).json({ message: 'Failed to download searchable PDF from OCR.space' });
+              return resolve();
+            }
+
+            const chunks: Buffer[] = [];
+            response.on('data', (chunk: Buffer) => chunks.push(chunk));
+            response.on('end', async () => {
+              try {
+                 const pdfBuffer = Buffer.concat(chunks);
+                 const outputPath = file.path.replace('.pdf', '_searchable.pdf');
+                 await fs.writeFile(outputPath, pdfBuffer);
+                 
+                 const stats = await fs.stat(outputPath);
+                 const fileSize = stats.size;
+                 
+                 // Save file history for authenticated users
+                 const savedFile = await saveFileHistory({
+                   userId: req.userId,
+                   isGuest: req.isGuest,
+                   originalFileName: file.originalname,
+                   processedFilePath: outputPath,
+                   operation: 'ocr',
+                   fileSize,
+                 });
+                 
+                 // Return file ID for download from our backend (avoids CORS)
+                 res.json({
+                   type: 'searchablePdf',
+                   fileId: savedFile?._id?.toString() || null,
+                   fileName: file.originalname.replace('.pdf', '_searchable.pdf'),
+                   fileSize: fileSize,
+                   text: result.text,
+                   characterCount: result.text.length,
+                   wordCount: result.text.split(/\s+/).filter(w => w.length > 0).length,
+                 });
+                 
+                 // Cleanup only for guest users (keep files for logged-in users)
+                 cleanupFiles([file.path, outputPath], !!req.userId && !req.isGuest, req.userId);
+                resolve();
+              } catch (error: any) {
+                cleanupFiles([file.path]);
+                res.status(500).json({ message: error.message || 'Failed to save searchable PDF' });
+                resolve();
+              }
+            });
+          }).on('error', (error: any) => {
+            cleanupFiles([file.path]);
+            res.status(500).json({ message: `Failed to download searchable PDF: ${error.message}` });
+            resolve();
+          });
+        });
+      } else {
+        // Extract text only
+        const extractedText = await OCRService.extractTextFromPdf(req.file.path);
+        
+        if (!extractedText || extractedText.trim().length === 0) {
+          cleanupFiles([req.file.path]);
+          return res.status(400).json({ 
+            message: 'No text could be extracted from this PDF. The PDF might be corrupted, password-protected, or contain only images without readable text.' 
+          });
         }
-        // Cleanup only for guest users
-        cleanupFiles([req.file!.path, outputPath], !!req.userId && !req.isGuest, req.userId);
-      });
+        
+        // Save text to file for download
+        const outputPath = req.file.path.replace('.pdf', '_ocr.txt');
+        await fs.writeFile(outputPath, extractedText, 'utf-8');
+        
+        // Get file size
+        const stats = await fs.stat(outputPath);
+        const fileSize = stats.size;
+        
+        // Save file history for authenticated users
+        await saveFileHistory({
+          userId: req.userId,
+          isGuest: req.isGuest,
+          originalFileName: req.file.originalname,
+          processedFilePath: outputPath,
+          operation: 'ocr',
+          fileSize,
+        });
+        
+        // Return text content and file info instead of downloading
+        res.json({
+          type: 'text',
+          text: extractedText,
+          fileName: req.file.originalname.replace('.pdf', '_ocr.txt'),
+          fileSize: fileSize,
+          characterCount: extractedText.length,
+          wordCount: extractedText.split(/\s+/).filter(w => w.length > 0).length,
+        });
+        
+        // Cleanup only for guest users (keep files for logged-in users)
+        cleanupFiles([req.file.path, outputPath], !!req.userId && !req.isGuest, req.userId);
+      }
     } catch (error: any) {
       cleanupFiles([req.file.path]);
-      res.status(500).json({ message: error.message });
+      console.error('OCR error:', error);
+      res.status(500).json({ message: error.message || 'Failed to extract text from PDF' });
     }
   }
 );

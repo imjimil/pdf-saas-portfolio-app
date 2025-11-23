@@ -137,13 +137,12 @@ export const pdfAPI = {
     });
     return response.data;
   },
-  ocr: async (file: File) => {
+  ocr: async (file: File, createSearchablePdf: boolean = false) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post('/pdf/ocr', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
+    formData.append('createSearchablePdf', createSearchablePdf.toString());
+    const response = await api.post('/pdf/ocr', formData);
+    return response.data; // Returns { type: 'text' | 'searchablePdf', text, fileName, fileSize, characterCount, wordCount, searchablePdfUrl? }
   },
   merge: async (files: File[]) => {
     const formData = new FormData();

@@ -1,171 +1,238 @@
-import { createWorker } from 'tesseract.js';
 import pdfParse from 'pdf-parse';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'fs/promises';
-import path from 'path';
-
-// Try to import canvas, but handle if it fails
-let createCanvas: any;
-try {
-  createCanvas = require('canvas').createCanvas;
-} catch (error) {
-  console.warn('Canvas not available, OCR will use fallback text extraction');
-  createCanvas = null;
-}
-
-// Set up pdfjs worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+import { ocrSpace, OcrSpaceResponse } from 'ocr-space-api-wrapper';
 
 export class OCRService {
-  // Convert PDF pages to images using pdfjs-dist and canvas
-  private static async pdfPagesToImages(pdfPath: string): Promise<string[]> {
-    const imagePaths: string[] = [];
-    const uploadDir = path.dirname(pdfPath);
-    
-    // If canvas is not available, return empty array (will use fallback)
-    if (!createCanvas) {
-      return [];
+  /**
+   * Create a searchable PDF using OCR.space API
+   * Returns the URL to download the searchable PDF
+   */
+  static async createSearchablePdf(pdfPath: string): Promise<{ searchablePdfUrl: string; text: string }> {
+    const apiKey = process.env.OCR_SPACE_API_KEY;
+    if (!apiKey) {
+      throw new Error('OCR_SPACE_API_KEY environment variable is not set. Please set it to use OCR functionality.');
     }
-    
-    try {
-      const dataBuffer = await fs.readFile(pdfPath);
-      const pdf = await pdfjsLib.getDocument({ data: dataBuffer }).promise;
-      const numPages = pdf.numPages;
-      
-      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 2.0 });
-        
-        // Create canvas
-        const canvas = createCanvas(viewport.width, viewport.height);
-        const context = canvas.getContext('2d');
-        
-        // Render PDF page to canvas
-        await page.render({
-          canvasContext: context as any,
-          viewport: viewport,
-        } as any).promise;
-        
-        // Convert canvas to buffer and save as image
-        const imageBuffer = canvas.toBuffer('image/png');
-        const imagePath = path.join(uploadDir, `page_${pageNum}_${Date.now()}.png`);
-        await fs.writeFile(imagePath, imageBuffer);
-        imagePaths.push(imagePath);
-      }
-      
-      return imagePaths;
-    } catch (error: any) {
-      // Clean up any created images on error
-      for (const imgPath of imagePaths) {
-        await fs.unlink(imgPath).catch(() => {});
-      }
-      // Return empty array to trigger fallback
-      return [];
+
+    console.log('Creating searchable PDF with OCR.space API...');
+    const result = await ocrSpace(pdfPath, {
+      apiKey: apiKey,
+      language: 'eng',
+      isOverlayRequired: false,
+      isCreateSearchablePdf: true,
+      isSearchablePdfHideTextLayer: false,
+    }) as OcrSpaceResponse;
+
+    console.log('OCR.space API response received');
+
+    // Parse the response
+    if (!result || typeof result !== 'object') {
+      throw new Error('Invalid response from OCR.space API');
     }
+
+    // Check for errors in response
+    if (result.OCRExitCode !== 1) {
+      const errorMessage = result.ErrorMessage?.[0] || 'Unknown OCR error';
+      console.error('OCR.space API error:', errorMessage);
+      throw new Error(`OCR.space API error: ${errorMessage}`);
+    }
+
+    // Extract text from all pages
+    let fullText = '';
+    if (result.ParsedResults && Array.isArray(result.ParsedResults)) {
+      for (let i = 0; i < result.ParsedResults.length; i++) {
+        const pageResult = result.ParsedResults[i];
+        if (pageResult.ParsedText) {
+          fullText += pageResult.ParsedText.trim() + '\n\n';
+        }
+      }
+    }
+
+    const searchablePdfUrl = result.SearchablePDFURL;
+    if (!searchablePdfUrl) {
+      throw new Error('OCR.space API did not return a searchable PDF URL');
+    }
+
+    console.log('Searchable PDF created. URL:', searchablePdfUrl);
+    return {
+      searchablePdfUrl,
+      text: fullText.trim(),
+    };
   }
 
-  // Extract text from PDF using OCR
+  /**
+   * Extract text from PDF using OCR.space API
+   * First tries direct text extraction, then falls back to OCR.space API
+   */
   static async extractTextFromPdf(pdfPath: string): Promise<string> {
-    let worker: any = null;
-    const imagePaths: string[] = [];
-    
     try {
-      // First, try to extract text directly (for PDFs with embedded text)
-      const dataBuffer = await fs.readFile(pdfPath);
-      const pdfData = await pdfParse(dataBuffer);
+      console.log('Starting text extraction for:', pdfPath);
       
-      // If we got substantial text, use it (but still try OCR for better accuracy)
-      if (pdfData.text && pdfData.text.trim().length > 50) {
-        // For PDFs with text, we can return it directly or enhance with OCR
-        // For now, let's still do OCR for better results
+      // FIRST: Try direct text extraction (for PDFs with embedded text)
+      // This is faster and more reliable for most PDFs
+      try {
+        console.log('Attempting direct text extraction...');
+        const dataBuffer = await fs.readFile(pdfPath);
+        const pdfData = await pdfParse(dataBuffer);
+        const directText = pdfData.text || '';
+        console.log('Direct text extraction length:', directText.length, 'characters');
+        
+        // If we got substantial text (> 50 characters), use it
+        // This handles most normal PDFs with embedded text
+        if (directText.trim().length > 50) {
+          console.log('Using direct text extraction (PDF has embedded text)');
+          return directText.trim();
+        }
+        
+        // If we got some text but not much, still use it (might be a short document)
+        if (directText.trim().length > 0) {
+          console.log('Using direct text extraction (short document)');
+          return directText.trim();
+        }
+        
+        console.log('Direct extraction returned empty or very little text, trying OCR.space API...');
+      } catch (directError: any) {
+        console.warn('Direct text extraction failed:', directError.message);
+        console.log('Falling back to OCR.space API...');
       }
       
-      // Convert PDF pages to images
-      const pageImages = await this.pdfPagesToImages(pdfPath);
-      imagePaths.push(...pageImages);
+      // SECOND: If direct extraction failed or returned empty, try OCR.space API
+      // This is for scanned PDFs or PDFs with only images
       
-      if (pageImages.length === 0) {
-        // Fallback to text extraction if image conversion fails
-        return pdfData.text || 'No text could be extracted from this PDF.';
+      const apiKey = process.env.OCR_SPACE_API_KEY;
+      if (!apiKey) {
+        console.warn('OCR_SPACE_API_KEY not set - cannot use OCR.space API');
+        // Try direct extraction one more time
+        try {
+          const dataBuffer = await fs.readFile(pdfPath);
+          const pdfData = await pdfParse(dataBuffer);
+          const fallbackText = pdfData.text || '';
+          if (fallbackText.trim().length > 0) {
+            console.log('Using direct extraction as fallback (no API key)');
+            return fallbackText.trim();
+          }
+        } catch (e) {
+          // Ignore
+        }
+        throw new Error('OCR_SPACE_API_KEY environment variable is not set. Please set it to use OCR functionality.');
       }
       
-      // Initialize Tesseract worker
-      worker = await createWorker('eng');
+      console.log('Calling OCR.space API...');
+      const result = await ocrSpace(pdfPath, {
+        apiKey: apiKey,
+        language: 'eng',
+        isOverlayRequired: false,
+      }) as OcrSpaceResponse;
+      
+      console.log('OCR.space API response received');
+      
+      // Parse the response
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response from OCR.space API');
+      }
+      
+      // Check for errors in response
+      if (result.OCRExitCode !== 1) {
+        const errorMessage = result.ErrorMessage?.[0] || 'Unknown OCR error';
+        console.error('OCR.space API error:', errorMessage);
+        throw new Error(`OCR.space API error: ${errorMessage}`);
+      }
+      
+      // Extract text from all pages
       let fullText = '';
       
-      // Process each page image with OCR
-      for (const imagePath of pageImages) {
-        try {
-          const { data: { text } } = await worker.recognize(imagePath);
-          fullText += text + '\n\n';
-        } catch (ocrError: any) {
-          console.error(`OCR error for ${imagePath}:`, ocrError);
+      if (result.ParsedResults && Array.isArray(result.ParsedResults)) {
+        for (let i = 0; i < result.ParsedResults.length; i++) {
+          const pageResult = result.ParsedResults[i];
+          if (pageResult.ParsedText) {
+            fullText += pageResult.ParsedText.trim() + '\n\n';
+          }
         }
       }
       
-      await worker.terminate();
-      worker = null;
+      const ocrText = fullText.trim();
+      console.log('OCR.space extraction complete. Total text length:', ocrText.length);
       
-      // Clean up temporary images
-      for (const imgPath of imagePaths) {
-        await fs.unlink(imgPath).catch(() => {});
+      // Return OCR text if available
+      if (ocrText.length > 0) {
+        return ocrText;
+      } else {
+        // Final attempt with direct extraction
+        try {
+          const dataBuffer = await fs.readFile(pdfPath);
+          const pdfData = await pdfParse(dataBuffer);
+          const finalText = pdfData.text || '';
+          if (finalText.trim().length > 0) {
+            console.log('Using direct extraction after OCR returned empty');
+            return finalText.trim();
+          }
+        } catch (e) {
+          // Ignore
+        }
+        throw new Error('OCR extraction returned no text. The PDF might be corrupted, password-protected, or contain only images without readable text.');
       }
-      
-      return fullText.trim() || pdfData.text || 'No text could be extracted from this PDF.';
     } catch (error: any) {
-      // Clean up worker if still active
-      if (worker) {
-        await worker.terminate().catch(() => {});
-      }
+      console.error('Text extraction error:', error);
       
-      // Clean up images
-      for (const imgPath of imagePaths) {
-        await fs.unlink(imgPath).catch(() => {});
-      }
-      
-      // Fallback to text extraction
+      // Final fallback to text extraction
       try {
+        console.log('Attempting final fallback text extraction...');
         const dataBuffer = await fs.readFile(pdfPath);
         const pdfData = await pdfParse(dataBuffer);
-        return pdfData.text || 'No text could be extracted from this PDF.';
+        const fallbackText = pdfData.text || '';
+        
+        if (fallbackText.trim().length > 0) {
+          console.log('Fallback text extraction successful:', fallbackText.length, 'characters');
+          return fallbackText.trim();
+        } else {
+          throw new Error(`Text extraction failed: ${error.message}. The PDF appears to have no extractable text.`);
+        }
       } catch (fallbackError: any) {
-        throw new Error(`OCR extraction failed: ${error.message}`);
+        // If fallback also fails, provide a helpful error message
+        const errorMsg = error.message || 'Unknown error';
+        const fallbackMsg = fallbackError.message || 'Unknown fallback error';
+        throw new Error(`Text extraction failed: ${errorMsg}. Fallback also failed: ${fallbackMsg}`);
       }
     }
   }
 
-  // Alternative: OCR from image file directly
-  static async extractTextFromImage(imagePath: string): Promise<string> {
-    let worker: any = null;
-    try {
-      worker = await createWorker('eng');
-      const { data: { text } } = await worker.recognize(imagePath);
-      await worker.terminate();
-      return text;
-    } catch (error: any) {
-      if (worker) {
-        await worker.terminate().catch(() => {});
-      }
-      throw new Error(`OCR from image failed: ${error.message}`);
-    }
-  }
-
-  // Process PDF with OCR
+  /**
+   * Process PDF with OCR and save to file
+   */
   static async processPdfWithOcr(pdfPath: string, outputPath: string): Promise<void> {
     try {
+      console.log('Processing PDF with OCR:', pdfPath);
       const text = await this.extractTextFromPdf(pdfPath);
-      await fs.writeFile(outputPath, text);
+      
+      if (!text || text.trim().length === 0) {
+        throw new Error('OCR extraction returned empty text');
+      }
+      
+      console.log('Writing OCR result to file:', outputPath, 'Text length:', text.length);
+      await fs.writeFile(outputPath, text, 'utf-8');
+      
+      // Verify file was written
+      const stats = await fs.stat(outputPath);
+      if (stats.size === 0) {
+        throw new Error('Output file was created but is empty');
+      }
+      
+      console.log('OCR processing complete. Output file size:', stats.size, 'bytes');
     } catch (error: any) {
+      console.error('OCR processing error:', error);
+      
       // Final fallback: try to extract text without OCR
       try {
+        console.log('Attempting final fallback text extraction...');
         const dataBuffer = await fs.readFile(pdfPath);
         const pdfData = await pdfParse(dataBuffer);
-        const extractedText = pdfData.text || 'No text could be extracted from this PDF. This might be a scanned document that requires OCR processing.';
-        await fs.writeFile(outputPath, extractedText);
+        const extractedText = pdfData.text || 'No text could be extracted from this PDF. This might be a scanned document that requires OCR processing, or the PDF might be corrupted or password-protected.';
+        
+        await fs.writeFile(outputPath, extractedText, 'utf-8');
+        console.log('Fallback text extraction written. Length:', extractedText.length);
       } catch (fallbackError: any) {
-        throw new Error(`OCR processing failed: ${error.message}`);
+        console.error('Final fallback also failed:', fallbackError);
+        throw new Error(`OCR processing failed: ${error.message}. Fallback error: ${fallbackError.message}`);
       }
     }
   }
 }
-
