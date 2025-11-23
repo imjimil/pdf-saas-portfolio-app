@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
@@ -199,13 +199,31 @@ if (googleClientId && googleClientSecret) {
 
   router.get(
     '/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: '/login' }),
+    (req: Request, res: Response, next: NextFunction) => {
+      passport.authenticate('google', { session: false }, (err: any, user: any, info: any) => {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        
+        if (err) {
+          console.error('OAuth authentication error:', err);
+          return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err.message || 'Authentication failed')}`);
+        }
+        
+        if (!user) {
+          console.error('OAuth callback: No user found', info);
+          return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Authentication failed: No user data')}`);
+        }
+        
+        // Attach user to request and continue
+        req.user = user;
+        next();
+      })(req, res, next);
+    },
     async (req: any, res: Response) => {
       try {
         const user = req.user;
         
         if (!user) {
-          console.error('OAuth callback: No user found');
+          console.error('OAuth callback: No user found in request');
           const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
           return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Authentication failed: No user data')}`);
         }
