@@ -99,6 +99,12 @@ npm run dev
 
 The frontend will run on `http://localhost:3000`
 
+## Deploying to production
+
+- **Backend**: [Render](https://render.com) — see [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md)
+- **Frontend**: [Vercel](https://vercel.com) — set `VITE_API_URL` to your Render API URL (e.g. `https://your-app.onrender.com/api`)
+- **Database**: MongoDB Atlas (connection string in `backend/.env`)
+
 ## Project Structure
 
 ```
