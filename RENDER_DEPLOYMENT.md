@@ -31,7 +31,7 @@ Render deploys from a Git repository. Make sure your project is on GitHub.
    - **Name**: `mypdftools-backend`
    - **Root Directory**: `backend`
    - **Runtime**: Node
-   - **Build Command**: `npm install && npm run build`
+   - **Build Command**: `npm install --include=dev && npm run build`
    - **Start Command**: `npm start`
    - **Plan**: Free (or paid for always-on)
 
@@ -122,7 +122,16 @@ Redeploy the frontend after saving.
 
 ## Troubleshooting
 
-### Build fails
+### Build fails with `moduleResolution=node10` removed
+
+Render sets `NODE_ENV=production`, which skips **devDependencies** (including TypeScript). The build then picks up the wrong compiler version.
+
+**Fix:** Set the build command to:
+```
+npm install --include=dev && npm run build
+```
+
+### Build fails (other)
 
 - Check **Logs** in the Render dashboard
 - Run locally: `cd backend && npm install && npm run build`
