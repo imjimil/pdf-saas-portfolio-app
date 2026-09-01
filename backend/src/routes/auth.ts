@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../models/User';
+import File from '../models/File';
+import Usage from '../models/Usage';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
@@ -360,11 +362,9 @@ router.delete('/account', authenticate, async (req: AuthRequest, res: Response) 
     }
 
     // Delete user's files from history
-    const File = (await import('../models/File')).default;
     await File.deleteMany({ userId: req.userId });
 
     // Delete user's usage records
-    const Usage = (await import('../models/Usage')).default;
     await Usage.deleteMany({ userId: req.userId });
 
     // Delete user account

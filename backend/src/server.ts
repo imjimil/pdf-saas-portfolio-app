@@ -46,6 +46,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Mypdftools API is running' });
 });
 
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Mypdftools API', health: '/api/health' });
+});
+
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
