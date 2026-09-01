@@ -1,74 +1,57 @@
 import File from '../models/File';
 import Usage from '../models/Usage';
-import path from 'path';
-import fs from 'fs/promises';
+import type { Operation } from '../lib/operations';
 
-interface SaveFileHistoryParams {
-  userId: string | undefined;
-  isGuest: boolean | undefined;
+/**
+ * Activity history.
+ *
+ * This records *metadata only*. Processed files are streamed to the user and
+ * then deleted — they are never retained on the server. That matches the
+ * privacy promise on the site, and is the only correct model on a host with an
+ * ephemeral filesystem, where kept files would vanish on the next deploy and
+ * leave the history pointing at 404s.
+ */
+
+interface RecordActivityParams {
+  userId?: string;
+  isGuest?: boolean;
   originalFileName: string;
-  processedFilePath: string;
-  operation: string;
+  resultFileName: string;
+  operation: Operation;
   fileSize: number;
-  status?: 'processing' | 'completed' | 'failed';
-  errorMessage?: string;
 }
 
-export async function saveFileHistory({
+export async function recordActivity({
   userId,
   isGuest,
   originalFileName,
-  processedFilePath,
+  resultFileName,
   operation,
   fileSize,
-  status = 'completed',
-  errorMessage,
-}: SaveFileHistoryParams): Promise<any> {
-  try {
-    // Get just the filename from the full path
-    const processedFileName = path.basename(processedFilePath);
+}: RecordActivityParams): Promise<void> {
+  // Guests are anonymous by design; there is nothing to attribute a record to.
+  if (!userId || isGuest) return;
 
-    // Save file record for both guests and authenticated users
-    // This allows downloads to work via file ID
-    const savedFile = await File.create({
-      userId: userId || undefined, // Allow null for guests
+  try {
+    await File.create({
+      userId,
       originalFileName,
-      processedFileName,
+      processedFileName: resultFileName,
       operation,
       fileSize,
-      status,
-      errorMessage,
+      status: 'completed',
     });
-    
-    // Only update usage statistics for authenticated users
-    if (userId && !isGuest) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
 
-      await Usage.findOneAndUpdate(
-        {
-          userId,
-          date: today,
-          operation,
-        },
-        {
-          $inc: {
-            fileCount: 1,
-            totalFileSize: fileSize,
-          },
-        },
-        {
-          upsert: true,
-          new: true,
-        }
-      );
-    }
-    
-    return savedFile;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    await Usage.findOneAndUpdate(
+      { userId, date: today, operation },
+      { $inc: { fileCount: 1, totalFileSize: fileSize } },
+      { upsert: true, new: true }
+    );
   } catch (error) {
-    // Log error but don't fail the request
-    console.error('Error saving file history:', error);
-    return null;
+    // History is a convenience; never fail a completed conversion because of it.
+    console.error('Failed to record activity:', error);
   }
 }
-

@@ -1,8 +1,6 @@
 import express, { Response } from 'express';
 import File from '../models/File';
 import { AuthRequest, authenticate } from '../middleware/auth';
-import fs from 'fs/promises';
-import path from 'path';
 
 const router = express.Router();
 
@@ -130,22 +128,6 @@ router.delete(
         return res.status(404).json({ message: 'File not found' });
       }
 
-      // Try to delete the physical file if it exists
-      if (file.processedFileName) {
-        const filePath = path.join(
-          process.cwd(),
-          'uploads',
-          file.processedFileName
-        );
-        try {
-          await fs.access(filePath);
-          await fs.unlink(filePath);
-        } catch (err) {
-          // File doesn't exist or already deleted, continue
-          console.log('File not found on disk, continuing with deletion');
-        }
-      }
-
       await File.deleteOne({ _id: file._id, userId });
 
       res.json({ message: 'File deleted successfully' });
@@ -156,79 +138,18 @@ router.delete(
   }
 );
 
-// Re-download processed file
-router.get(
-  '/:id/download',
-  authenticate,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const fileId = req.params.id;
-      const userId = req.userId;
-
-      // Find file - allow access if user owns it OR if it's a recent OCR file (for guests)
-      const file = await File.findOne({
-        _id: fileId,
-        ...(userId ? { userId } : {}), // If authenticated, must be owner
-      });
-
-      // For guests, allow download if file was created recently (within last hour) and is OCR
-      if (!file && !userId) {
-        // Try to find recent OCR files for guests (created within last hour)
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const recentFile = await File.findOne({
-          _id: fileId,
-          operation: 'ocr',
-          createdAt: { $gte: oneHourAgo },
-        });
-        
-        if (recentFile) {
-          const filePath = path.join(
-            process.cwd(),
-            'uploads',
-            recentFile.processedFileName
-          );
-          try {
-            await fs.access(filePath);
-            res.download(filePath, recentFile.originalFileName);
-            return;
-          } catch (err) {
-            return res.status(404).json({
-              message: 'File no longer available for download',
-            });
-          }
-        }
-      }
-
-      if (!file) {
-        return res.status(404).json({ message: 'File not found' });
-      }
-
-      // For authenticated users, verify ownership
-      if (userId && file.userId?.toString() !== userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      // Check if file exists on disk
-      const filePath = path.join(
-        process.cwd(),
-        'uploads',
-        file.processedFileName
-      );
-
-      try {
-        await fs.access(filePath);
-        res.download(filePath, file.originalFileName);
-      } catch (err) {
-        res.status(404).json({
-          message: 'File no longer available for download',
-        });
-      }
-    } catch (error: any) {
-      console.error('Error downloading file:', error);
-      res.status(500).json({ message: 'Failed to download file' });
-    }
-  }
-);
+/**
+ * Processed files are streamed to the user and deleted immediately; nothing is
+ * stored on the server. History is a record of what was converted, not a file
+ * cabinet, so re-downloading is intentionally unavailable.
+ */
+router.get('/:id/download', authenticate, (_req: AuthRequest, res: Response) => {
+  res.status(410).json({
+    message: 'Files are deleted from our servers right after you download them.',
+    hint: 'Upload the original file again to create a new copy.',
+    code: 'FILE_NOT_RETAINED',
+  });
+});
 
 export default router;
 

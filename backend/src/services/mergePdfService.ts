@@ -1,23 +1,71 @@
-import { PDFDocument } from 'pdf-lib';
 import fs from 'fs/promises';
+import { PDFDocument } from 'pdf-lib';
+import { AppError, toAppError } from '../lib/errors';
+import { loadPdf } from '../lib/pdf';
 
-export class MergePdfService {
-  static async merge(pdfPaths: string[], outputPath: string): Promise<void> {
-    try {
-      const mergedPdf = await PDFDocument.create();
-      
-      for (const pdfPath of pdfPaths) {
-        const pdfBytes = await fs.readFile(pdfPath);
-        const pdf = await PDFDocument.load(pdfBytes);
-        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-        pages.forEach((page) => mergedPdf.addPage(page));
-      }
-      
-      const mergedPdfBytes = await mergedPdf.save();
-      await fs.writeFile(outputPath, mergedPdfBytes);
-    } catch (error: any) {
-      throw new Error(`PDF merge failed: ${error.message}`);
-    }
-  }
+/**
+ * Merge PDFs in the order supplied.
+ *
+ * Failures now name the specific file that caused them, so a user merging ten
+ * documents is not left guessing which one is encrypted or damaged.
+ */
+
+export interface MergeInput {
+  path: string;
+  originalName: string;
 }
 
+export interface MergeResult {
+  outputPath: string;
+  pageCount: number;
+  documentCount: number;
+}
+
+export class MergePdfService {
+  static async merge(
+    inputs: MergeInput[],
+    outputPath: string
+  ): Promise<MergeResult> {
+    if (inputs.length < 2) {
+      throw new AppError('INVALID_INPUT', 'Select at least two PDFs to merge.');
+    }
+
+    const merged = await PDFDocument.create();
+
+    for (const input of inputs) {
+      let source: PDFDocument;
+      try {
+        source = await loadPdf(input.path, { ignoreEncryption: false });
+      } catch (error) {
+        const reason = error instanceof AppError ? error.message : 'could not be opened';
+        throw new AppError(
+          error instanceof AppError ? error.code : 'CORRUPT_FILE',
+          `"${input.originalName}" ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`,
+          error instanceof AppError ? error.hint : undefined
+        );
+      }
+
+      if (source.getPageCount() === 0) {
+        throw new AppError('EMPTY_RESULT', `"${input.originalName}" has no pages.`);
+      }
+
+      try {
+        const copied = await merged.copyPages(source, source.getPageIndices());
+        copied.forEach((page) => merged.addPage(page));
+      } catch (error) {
+        throw toAppError(error, `"${input.originalName}" could not be merged.`);
+      }
+    }
+
+    merged.setProducer('Mypdftools');
+    merged.setCreator('Mypdftools');
+
+    await fs.writeFile(outputPath, await merged.save({ useObjectStreams: true }));
+
+    return {
+      outputPath,
+      pageCount: merged.getPageCount(),
+      documentCount: inputs.length,
+    };
+  }
+}

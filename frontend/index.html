@@ -1,14 +1,58 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mypdftools - Convert, Split & Process PDFs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <title>Mypdftools — Every PDF tool you need, in one place</title>
+    <meta
+      name="description"
+      content="Convert, compress, merge, split, protect and OCR your PDFs. Fast, private and free — your files are deleted the moment you download them."
+    />
+
+    <!-- Matches the nav so iOS Safari tints its chrome to the app -->
+    <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0f0e" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Mypdftools — Every PDF tool you need" />
+    <meta
+      property="og:description"
+      content="Convert, compress, merge, split, protect and OCR your PDFs. Private by default."
+    />
+
+    <!--
+      Headings only. Body copy uses the platform UI font, which is SF Pro on
+      iPhone and Mac, so the interface matches the OS and there is one less
+      webfont to download before the page is readable.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      // Applied before first paint so a dark-mode reload never flashes white.
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

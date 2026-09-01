@@ -1,405 +1,423 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import Navigation from '../components/Navigation';
-import { authAPI, fileAPI } from '../services/api';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { AlertTriangle, KeyRound, Mail, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Button } from '../components/ui/Button';
+import { toast } from '../components/ui/Toast';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiError, authAPI } from '../services/api';
 
-interface User {
-  _id: string;
+interface ProfileUser {
+  _id?: string;
+  id?: string;
   email: string;
   name?: string;
-  createdAt: string;
+  createdAt?: string;
   googleId?: string;
 }
 
-const Profile = () => {
-  const { isAuthenticated, logout, loading: authLoading } = useAuth();
+const FIELD =
+  'h-11 w-full rounded-xl border border-ink/[0.09] bg-white px-3.5 text-[15px] text-ink ' +
+  'placeholder:text-ink-muted/70 transition-colors focus:border-brand-500 ' +
+  'dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-sand-100 dark:placeholder:text-sand-500';
+
+const LABEL = 'mb-1.5 block text-[13.5px] font-medium text-ink-soft dark:text-sand-300';
+
+export default function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, logout, updateUser } = useAuth();
+
+  const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [stats, setStats] = useState({
-    totalFiles: 0,
-    totalSize: 0,
-    thisMonth: 0,
-  });
+  const [loadError, setLoadError] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    // Wait for auth to finish loading before checking
-    if (authLoading) {
-      return;
-    }
-    
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-    fetchProfile();
-    fetchStats();
-  }, [isAuthenticated, authLoading, navigate]);
-
-  const fetchProfile = async () => {
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
     try {
-      setLoading(true);
-      const response = await authAPI.getProfile();
-      setUser(response.user);
-    } catch (err: any) {
-      console.error('Error fetching profile:', err);
-      setError(err.response?.data?.message || 'Failed to load profile');
+      const data: { user: ProfileUser } = await authAPI.getProfile();
+      setProfile(data.user);
+    } catch (caught) {
+      setLoadError(messageFrom(caught, 'Could not load your account details.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
-    try {
-      const response = await fileAPI.getHistory(1, 1);
-      const totalFiles = response.pagination.total;
-      
-      // Get all files to calculate total size
-      const allFilesResponse = await fileAPI.getHistory(1, totalFiles || 1000);
-      let totalSize = 0;
-      let thisMonthCount = 0;
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
-      allFilesResponse.files.forEach((file: any) => {
-        totalSize += file.fileSize;
-        const fileDate = new Date(file.createdAt);
-        if (fileDate >= startOfMonth) {
-          thisMonthCount++;
-        }
-      });
-
-      setStats({
-        totalFiles,
-        totalSize,
-        thisMonth: thisMonthCount,
-      });
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-    }
-  };
-
-  const profileFormik = useFormik({
-    initialValues: {
-      name: user?.name || '',
-    },
+  const nameFormik = useFormik({
+    initialValues: { name: profile?.name ?? '' },
     enableReinitialize: true,
     validationSchema: Yup.object({
-      name: Yup.string().max(100, 'Name must be less than 100 characters'),
+      name: Yup.string().max(100, 'Keep it under 100 characters'),
     }),
     onSubmit: async (values) => {
       try {
-        setError('');
-        setSuccess('');
-        await authAPI.updateProfile(values.name);
-        setSuccess('Profile updated successfully');
-        await fetchProfile();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to update profile');
+        await authAPI.updateProfile(values.name.trim());
+        updateUser({ name: values.name.trim() || undefined });
+        setProfile((current) => (current ? { ...current, name: values.name.trim() } : current));
+        toast.success('Name saved');
+      } catch (caught) {
+        toast.error(messageFrom(caught, 'Could not save your name.'));
       }
     },
   });
 
   const passwordFormik = useFormik({
-    initialValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    },
+    initialValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
     validationSchema: Yup.object({
-      currentPassword: Yup.string().required('Current password is required'),
+      currentPassword: Yup.string().required('Enter your current password'),
       newPassword: Yup.string()
-        .min(6, 'Password must be at least 6 characters')
-        .required('New password is required'),
+        .min(6, 'Use at least 6 characters')
+        .required('Enter a new password'),
       confirmPassword: Yup.string()
-        .oneOf([Yup.ref('newPassword')], 'Passwords must match')
-        .required('Please confirm your password'),
+        .oneOf([Yup.ref('newPassword')], 'Both passwords must match')
+        .required('Confirm your new password'),
     }),
-    onSubmit: async (values) => {
+    onSubmit: async (values, helpers) => {
       try {
-        setError('');
-        setSuccess('');
         await authAPI.changePassword(values.currentPassword, values.newPassword);
-        setSuccess('Password changed successfully');
-        passwordFormik.resetForm();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to change password');
+        helpers.resetForm();
+        toast.success('Password changed');
+      } catch (caught) {
+        toast.error(messageFrom(caught, 'Could not change your password.'));
       }
     },
   });
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone and will delete all your files and data.')) {
-      return;
-    }
-
-    if (!window.confirm('This is your last chance. Are you absolutely sure?')) {
-      return;
-    }
-
+    setDeleting(true);
     try {
       await authAPI.deleteAccount();
       logout();
-      navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete account');
+      toast.success('Account deleted', 'Your email and activity log have been removed.');
+      navigate('/', { replace: true });
+    } catch (caught) {
+      toast.error(messageFrom(caught, 'Could not delete your account.'));
+      setDeleting(false);
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-  };
-
-  // Show loading while auth is being checked
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
-        <Navigation showAuth={true} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-primary"></div>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
-        <Navigation showAuth={true} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-primary"></div>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const email = profile?.email ?? user?.email ?? '';
+  const initial = (profile?.name || email || '?').charAt(0).toUpperCase();
+  const isGoogleAccount = Boolean(profile?.googleId);
 
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
-      <Navigation showAuth={true} />
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6 md:mb-8">
-          Profile Settings
-        </h1>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-200">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-200">
-            {success}
-          </div>
-        )}
-
-        {/* Usage Statistics */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Usage Statistics
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Files Processed</div>
-              <div className="text-2xl font-bold text-green-primary dark:text-green-light">
-                {stats.totalFiles}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Storage Used</div>
-              <div className="text-2xl font-bold text-green-primary dark:text-green-light">
-                {formatFileSize(stats.totalSize)}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Files This Month</div>
-              <div className="text-2xl font-bold text-green-primary dark:text-green-light">
-                {stats.thisMonth}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Account Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Account Information
-          </h2>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={user?.email || ''}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Email cannot be changed</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Account Created
-              </label>
-              <input
-                type="text"
-                value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
-              />
-            </div>
-            {user?.googleId && (
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  This account was created with Google OAuth
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Update Profile */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Update Profile
-          </h2>
-          <form onSubmit={profileFormik.handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={profileFormik.values.name}
-                onChange={profileFormik.handleChange}
-                onBlur={profileFormik.handleBlur}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-              {profileFormik.touched.name && profileFormik.errors.name && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {profileFormik.errors.name}
-                </p>
-              )}
-            </div>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
-            >
-              Update Profile
-            </button>
-          </form>
-        </div>
-
-        {/* Change Password */}
-        {!user?.googleId && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Change Password
-            </h2>
-            <form onSubmit={passwordFormik.handleSubmit}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  name="currentPassword"
-                  value={passwordFormik.values.currentPassword}
-                  onChange={passwordFormik.handleChange}
-                  onBlur={passwordFormik.handleBlur}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-                {passwordFormik.touched.currentPassword && passwordFormik.errors.currentPassword && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {passwordFormik.errors.currentPassword}
-                  </p>
-                )}
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  name="newPassword"
-                  value={passwordFormik.values.newPassword}
-                  onChange={passwordFormik.handleChange}
-                  onBlur={passwordFormik.handleBlur}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-                {passwordFormik.touched.newPassword && passwordFormik.errors.newPassword && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {passwordFormik.errors.newPassword}
-                  </p>
-                )}
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={passwordFormik.values.confirmPassword}
-                  onChange={passwordFormik.handleChange}
-                  onBlur={passwordFormik.handleBlur}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-                {passwordFormik.touched.confirmPassword && passwordFormik.errors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {passwordFormik.errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
-              >
-                Change Password
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Delete Account */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-red-200 dark:border-red-800">
-          <h2 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-4">
-            Danger Zone
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Once you delete your account, there is no going back. Please be certain.
+    <AppShell>
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+        <header className="animate-fade-up">
+          <h1 className="text-display-xs">Account</h1>
+          <p className="mt-1.5 text-[15px] text-muted text-pretty">
+            Everything we hold about you lives on this page.
           </p>
-          <button
-            onClick={handleDeleteAccount}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+        </header>
+
+        {loadError && (
+          <div
+            role="alert"
+            className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-500/25 dark:bg-red-500/10"
           >
-            Delete Account
-          </button>
-        </div>
+            <p className="text-[14px] font-medium text-red-800 dark:text-red-300">{loadError}</p>
+            <div className="mt-3">
+              <Button size="sm" variant="secondary" onClick={loadProfile}>
+                Try again
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="mt-6 space-y-4" aria-busy="true" aria-label="Loading your account">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="card space-y-3 p-5">
+                <div className="h-4 w-1/3 animate-pulse rounded-full bg-ink/[0.07] dark:bg-white/[0.08]" />
+                <div className="h-11 w-full animate-pulse rounded-xl bg-ink/[0.05] dark:bg-white/[0.05]" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 space-y-4">
+            <section className="card p-5 sm:p-6">
+              <div className="flex items-center gap-4">
+                <span
+                  aria-hidden
+                  className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand-600 text-[22px] font-semibold text-white"
+                >
+                  {initial}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[16px] font-semibold">
+                    {profile?.name || 'No name set'}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-[14px] text-muted">
+                    <Mail size={14} className="shrink-0" aria-hidden />
+                    {email}
+                  </p>
+                </div>
+              </div>
+
+              <dl className="mt-5 grid gap-4 border-t hairline pt-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-[12.5px] text-muted">Member since</dt>
+                  <dd className="mt-0.5 text-[14.5px]">
+                    {profile?.createdAt
+                      ? new Date(profile.createdAt).toLocaleDateString(undefined, {
+                          dateStyle: 'long',
+                        })
+                      : 'Unknown'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[12.5px] text-muted">Sign-in method</dt>
+                  <dd className="mt-0.5 text-[14.5px]">
+                    {isGoogleAccount ? 'Google' : 'Email and password'}
+                  </dd>
+                </div>
+              </dl>
+
+              <p className="mt-4 flex items-start gap-2 text-[13px] text-muted text-pretty">
+                <ShieldCheck size={15} className="mt-0.5 shrink-0" aria-hidden />
+                We store your email, an optional name and a log of which tools you used. The files
+                themselves are never kept.
+              </p>
+            </section>
+
+            <section className="card p-5 sm:p-6" aria-labelledby="display-name">
+              <h2 id="display-name" className="flex items-center gap-2 text-[16px] font-semibold">
+                <UserRound size={17} aria-hidden className="text-ink-muted dark:text-sand-400" />
+                Display name
+              </h2>
+              <p className="mt-1 text-[14px] text-muted">
+                Shown in the account menu. Optional — your email works fine on its own.
+              </p>
+
+              <form className="mt-4" onSubmit={nameFormik.handleSubmit} noValidate>
+                <label htmlFor="name" className={LABEL}>
+                  Name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="How should we address you?"
+                  value={nameFormik.values.name}
+                  onChange={nameFormik.handleChange}
+                  onBlur={nameFormik.handleBlur}
+                  aria-invalid={Boolean(nameFormik.touched.name && nameFormik.errors.name)}
+                  aria-describedby={
+                    nameFormik.touched.name && nameFormik.errors.name ? 'name-error' : undefined
+                  }
+                  className={FIELD}
+                />
+                {nameFormik.touched.name && nameFormik.errors.name && (
+                  <p
+                    id="name-error"
+                    role="alert"
+                    className="mt-1.5 text-[13px] text-red-600 dark:text-red-400"
+                  >
+                    {nameFormik.errors.name}
+                  </p>
+                )}
+
+                <div className="mt-4">
+                  <Button type="submit" loading={nameFormik.isSubmitting}>
+                    Save name
+                  </Button>
+                </div>
+              </form>
+            </section>
+
+            {isGoogleAccount ? (
+              <section className="card p-5 sm:p-6">
+                <h2 className="flex items-center gap-2 text-[16px] font-semibold">
+                  <KeyRound size={17} aria-hidden className="text-ink-muted dark:text-sand-400" />
+                  Password
+                </h2>
+                <p className="mt-1 text-[14px] text-muted text-pretty">
+                  You sign in with Google, so this account has no password to change. Manage it
+                  from your Google account instead.
+                </p>
+              </section>
+            ) : (
+              <section className="card p-5 sm:p-6" aria-labelledby="change-password">
+                <h2
+                  id="change-password"
+                  className="flex items-center gap-2 text-[16px] font-semibold"
+                >
+                  <KeyRound size={17} aria-hidden className="text-ink-muted dark:text-sand-400" />
+                  Change password
+                </h2>
+                <p className="mt-1 text-[14px] text-muted">
+                  At least 6 characters. Passwords are stored hashed, never in plain text.
+                </p>
+
+                <form
+                  className="mt-4 space-y-4"
+                  onSubmit={passwordFormik.handleSubmit}
+                  noValidate
+                >
+                  <PasswordField
+                    id="currentPassword"
+                    label="Current password"
+                    autoComplete="current-password"
+                    value={passwordFormik.values.currentPassword}
+                    error={
+                      passwordFormik.touched.currentPassword
+                        ? passwordFormik.errors.currentPassword
+                        : undefined
+                    }
+                    onChange={passwordFormik.handleChange}
+                    onBlur={passwordFormik.handleBlur}
+                  />
+                  <PasswordField
+                    id="newPassword"
+                    label="New password"
+                    autoComplete="new-password"
+                    value={passwordFormik.values.newPassword}
+                    error={
+                      passwordFormik.touched.newPassword
+                        ? passwordFormik.errors.newPassword
+                        : undefined
+                    }
+                    onChange={passwordFormik.handleChange}
+                    onBlur={passwordFormik.handleBlur}
+                  />
+                  <PasswordField
+                    id="confirmPassword"
+                    label="Confirm new password"
+                    autoComplete="new-password"
+                    value={passwordFormik.values.confirmPassword}
+                    error={
+                      passwordFormik.touched.confirmPassword
+                        ? passwordFormik.errors.confirmPassword
+                        : undefined
+                    }
+                    onChange={passwordFormik.handleChange}
+                    onBlur={passwordFormik.handleBlur}
+                  />
+
+                  <Button type="submit" loading={passwordFormik.isSubmitting}>
+                    Change password
+                  </Button>
+                </form>
+              </section>
+            )}
+
+            <section
+              className="rounded-2xl border border-red-200 bg-red-50/60 p-5 dark:border-red-500/25 dark:bg-red-500/[0.07] sm:p-6"
+              aria-labelledby="danger-zone"
+            >
+              <h2
+                id="danger-zone"
+                className="flex items-center gap-2 text-[16px] font-semibold text-red-700 dark:text-red-300"
+              >
+                <AlertTriangle size={17} aria-hidden />
+                Delete account
+              </h2>
+              <p className="mt-1 text-[14px] text-red-800/80 dark:text-red-300/80 text-pretty">
+                This removes your email, your name and your entire activity log. It cannot be
+                undone.
+              </p>
+
+              {confirmingDelete ? (
+                <div
+                  role="alert"
+                  className="mt-4 rounded-xl border border-red-300 bg-white p-4 dark:border-red-500/35 dark:bg-[#1b1413]"
+                >
+                  <p className="text-[14px] font-medium text-red-800 dark:text-red-300">
+                    Permanently delete the account for {email}?
+                  </p>
+                  <p className="mt-1 text-[13px] text-red-700/80 dark:text-red-300/70">
+                    You will be signed out immediately. Nothing can be restored afterwards.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2.5">
+                    <Button
+                      variant="danger"
+                      icon={Trash2}
+                      loading={deleting}
+                      onClick={handleDeleteAccount}
+                    >
+                      Yes, delete my account
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={deleting}
+                      onClick={() => setConfirmingDelete(false)}
+                    >
+                      Keep my account
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <Button variant="danger" icon={Trash2} onClick={() => setConfirmingDelete(true)}>
+                    Delete account
+                  </Button>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
       </div>
+    </AppShell>
+  );
+}
+
+function PasswordField({
+  id,
+  label,
+  autoComplete,
+  value,
+  error,
+  onChange,
+  onBlur,
+}: {
+  id: string;
+  label: string;
+  autoComplete: string;
+  value: string;
+  error?: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type="password"
+        autoComplete={autoComplete}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className={FIELD}
+      />
+      {error && (
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="mt-1.5 text-[13px] text-red-600 dark:text-red-400"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
-};
+}
 
-export default Profile;
-
+function messageFrom(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
+}

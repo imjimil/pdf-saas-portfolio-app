@@ -1,103 +1,180 @@
-// Load environment variables FIRST, before any other imports
+// Environment must load before any module reads process.env at import time.
 import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import session from 'express-session';
+
 import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdf';
 import fileRoutes from './routes/files';
 import analyticsRoutes from './routes/analytics';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { logCapabilities, getCapabilities } from './lib/binaries';
+import { SESSION_SECRET } from './lib/config';
+import { sweepStaleWorkspaces } from './lib/workspace';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.set('trust proxy', 1);
 
-// Session middleware for OAuth
+app.use(
+  helmet({
+    // Responses are JSON and file downloads, never embedded HTML.
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+app.use(compression());
+
+// The deployed frontend plus local dev servers.
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:5173',
+].filter(Boolean) as string[];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Same-origin requests and curl send no Origin header.
+      if (!origin) return callback(null, true);
+
+      const allowed =
+        allowedOrigins.includes(origin) ||
+        // Vercel preview deployments of this project.
+        /^https:\/\/[\w-]+\.vercel\.app$/.test(origin);
+
+      callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+    },
+    credentials: true,
+    exposedHeaders: ['Content-Disposition'],
+  })
+);
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'fallback-secret',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      secure: isProduction,
+      httpOnly: true,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+    },
   })
 );
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/pdf', pdfRoutes);
+// Conversions are CPU-heavy, so they get a tighter budget than reads.
+const conversionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 60 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: 'You have made a lot of requests. Please wait a few minutes and try again.',
+    code: 'RATE_LIMITED',
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 30 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    message: 'Too many attempts. Please wait a few minutes and try again.',
+    code: 'RATE_LIMITED',
+  },
+});
+
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/pdf', conversionLimiter, pdfRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Mypdftools API is running' });
+app.get('/api/health', async (_req, res) => {
+  const capabilities = await getCapabilities();
+  res.json({
+    status: 'ok',
+    message: 'Mypdftools API is running',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    capabilities,
+  });
 });
 
-app.get('/', (req, res) => {
-  res.json({ status: 'ok', message: 'Mypdftools API', health: '/api/health' });
+app.get('/', (_req, res) => {
+  res.json({ name: 'Mypdftools API', health: '/api/health' });
 });
 
-// Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server first, then connect to MongoDB (so server starts even if MongoDB is down)
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
-  
-  // Connect to MongoDB
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/mypdftools';
-  
-  // Log connection attempt (mask password for security)
-  const maskedUri = mongoUri.replace(/:[^:@]+@/, ':****@');
-  console.log('Attempting to connect to MongoDB:', maskedUri);
-  
-  mongoose
-    .connect(mongoUri)
-    .then(() => {
-      console.log('✓ Connected to MongoDB successfully');
-    })
-    .catch((error) => {
-      console.error('✗ MongoDB connection error:', error.message);
-      
-      // Provide helpful error messages
-      if (error.message.includes('bad auth') || error.message.includes('authentication failed')) {
-        console.error('\n⚠️  AUTHENTICATION ERROR - Common fixes:');
-        console.error('   1. Check username and password are correct');
-        console.error('   2. If password has special characters (@, #, %, etc.), URL-encode them');
-        console.error('   3. Example: @ becomes %40, # becomes %23');
-        console.error('   4. Use https://www.urlencoder.org/ to encode your password');
-        console.error('   5. Or create a new user with a simple password (letters/numbers only)');
-        console.error('\n   See MONGODB_TROUBLESHOOTING.md for detailed help\n');
-      } else if (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo')) {
-        console.error('\n⚠️  NETWORK ERROR - Common fixes:');
-        console.error('   1. Check your internet connection');
-        console.error('   2. Verify MongoDB Atlas cluster is running');
-        console.error('   3. Check Network Access in MongoDB Atlas allows your IP');
-        console.error('   4. Try adding 0.0.0.0/0 to allow all IPs (for development)\n');
-      } else if (error.message.includes('timeout')) {
-        console.error('\n⚠️  TIMEOUT ERROR - Common fixes:');
-        console.error('   1. Check Network Access in MongoDB Atlas');
-        console.error('   2. Verify your IP is whitelisted');
-        console.error('   3. Try again in a few minutes\n');
-      }
-      
-      console.warn('Server is running but MongoDB is not connected. Some features may not work.');
-    });
+// Listen first so the platform health check passes even if Mongo is slow.
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`Server listening on port ${PORT}`);
+
+  await logCapabilities();
+
+  await sweepStaleWorkspaces();
+  setInterval(() => void sweepStaleWorkspaces(), 60 * 60 * 1000).unref();
+
+  await connectToDatabase();
 });
 
-export default app;
+async function connectToDatabase(): Promise<void> {
+  const uri = process.env.MONGODB_URI;
 
+  if (!uri) {
+    console.error(
+      'MONGODB_URI is not set. Accounts and history are disabled; conversions still work.'
+    );
+    return;
+  }
+
+  console.log('Connecting to MongoDB:', uri.replace(/:[^:@]+@/, ':****@'));
+
+  try {
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10_000,
+      maxPoolSize: 10,
+    });
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('MongoDB connection failed:', message);
+
+    if (/bad auth|authentication failed/i.test(message)) {
+      console.error(
+        'Check the username and password in MONGODB_URI. Special characters must be percent-encoded.'
+      );
+    } else if (/ENOTFOUND|getaddrinfo|querySrv/i.test(message)) {
+      console.error(
+        'The cluster hostname could not be resolved. Confirm MONGODB_URI is the real connection string, not the placeholder.'
+      );
+    } else if (/timed out/i.test(message)) {
+      console.error(
+        'Connection timed out. In MongoDB Atlas, allow 0.0.0.0/0 under Network Access.'
+      );
+    }
+
+    console.warn('Running without a database. Conversions work; accounts do not.');
+  }
+}
+
+export default app;

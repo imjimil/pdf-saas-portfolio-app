@@ -2,25 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 100%;
+@layer base {
+  :root {
+    --surface: 250 249 247;
+    --surface-raised: 255 255 255;
+    --border-hair: 20 23 21 / 0.08;
+  }
+
+  .dark {
+    --surface: 11 15 14;
+    --surface-raised: 23 28 26;
+    --border-hair: 255 255 255 / 0.1;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Prevents iOS Safari from bouncing the page behind fixed chrome. */
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    @apply bg-sand-50 text-ink antialiased dark:bg-[#0b0f0e] dark:text-sand-100;
+    font-family: theme('fontFamily.sans');
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /*
+   * Headings default to the UI font, because most of them are small structural
+   * labels — card titles, table headers, section names — where a serif reads as
+   * decoration. The editorial serif is opt-in via `font-display font-normal` on
+   * the large headings that carry the page.
+   */
+  h1, h2, h3, h4 {
+    @apply font-semibold text-balance;
+  }
+
+  /* A single visible focus treatment across the whole app. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-sand-50 dark:ring-offset-[#0b0f0e];
+  }
+
+  ::selection {
+    @apply bg-brand-500/20;
+  }
+
+  /* Honour the OS "reduce motion" setting instead of animating regardless. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #fefbf3;
+@layer components {
+  /*
+   * Display sizes always render in the serif, so the two never drift apart and
+   * no heading has to repeat the pairing by hand. Instrument Serif has a single
+   * weight; asking for a heavier one only makes the browser smear the glyphs.
+   */
+  [class*='text-display-'] {
+    font-family: theme('fontFamily.display');
+    font-weight: 400;
+  }
+
+  /* The frosted material used by the top bar, tab bar and sheets. */
+  .surface-glass {
+    @apply bg-sand-50/80 backdrop-blur-ios backdrop-saturate-150 dark:bg-[#0b0f0e]/80;
+  }
+
+  .card {
+    @apply rounded-2xl border border-ink/[0.07] bg-white shadow-card dark:border-white/[0.08] dark:bg-white/[0.04];
+  }
+
+  .hairline {
+    @apply border-ink/[0.07] dark:border-white/[0.08];
+  }
+
+  /* Every interactive control is at least 44px tall — Apple's touch minimum. */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .text-muted {
+    @apply text-ink-muted dark:text-sand-400;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Reserves room for the mobile tab bar so content is never hidden behind it. */
+  .pb-tabbar {
+    padding-bottom: calc(theme('spacing.tabbar') + env(safe-area-inset-bottom, 0px));
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

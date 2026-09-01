@@ -1,330 +1,240 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
-import { motion } from 'framer-motion';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { Mail, ExternalLink, Info } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Button } from '../components/ui/Button';
+import { toast } from '../components/ui/Toast';
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
+const SUPPORT_EMAIL = 'jprajapati2014@gmail.com';
+
+const FIELD =
+  'w-full rounded-xl border border-ink/[0.09] bg-white px-3.5 text-[15px] text-ink ' +
+  'placeholder:text-ink-muted/70 transition-colors focus:border-brand-500 ' +
+  'dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-sand-100 dark:placeholder:text-sand-500';
+
+const INPUT = `${FIELD} h-11`;
+const TEXTAREA = `${FIELD} resize-y py-2.5`;
+
+const LABEL = 'mb-1.5 block text-[13.5px] font-medium text-ink-soft dark:text-sand-300';
+
+interface ContactValues {
+  name: string;
+  email: string;
+  message: string;
+}
+
+export default function Contact() {
+  const formik = useFormik<ContactValues>({
+    initialValues: { name: '', email: '', message: '' },
+    validationSchema: Yup.object({
+      name: Yup.string().trim().required('Please tell us your name'),
+      email: Yup.string().email('Enter a valid email address').required('Email is required'),
+      message: Yup.string()
+        .trim()
+        .min(10, 'A little more detail helps us answer properly')
+        .required('Please write a message'),
+    }),
+    onSubmit: (values) => {
+      window.location.href = buildMailto(values);
+      toast.info('Opening your email app', `The message is addressed to ${SUPPORT_EMAIL}.`);
+    },
   });
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess(false);
-
-    // Simulate form submission (in a real app, this would send to a backend)
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-      
-      // Reset success message after 5 seconds
-      setTimeout(() => setSuccess(false), 5000);
-    }, 1000);
-  };
-
-  const contactMethods = [
-    {
-      icon: '📧',
-      title: 'Email',
-      description: 'Send us an email anytime',
-      value: 'support@mypdftools.com',
-      link: 'mailto:jprajapati2014@gmail.com',
-    },
-    {
-      icon: '💬',
-      title: 'Support',
-      description: 'Get help with your account',
-      value: 'help@mypdftools.com',
-      link: 'mailto:jprajapati2014@gmail.com',
-    },
-    {
-      icon: '🔒',
-      title: 'Privacy',
-      description: 'Privacy and security inquiries',
-      value: 'privacy@mypdftools.com',
-      link: 'mailto:jprajapati2014@gmail.com',
-    },
-  ];
+  const fieldError = (field: keyof ContactValues): string | undefined =>
+    formik.touched[field] ? formik.errors[field] : undefined;
 
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
-      <Navigation showAuth={true} />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <Link
-            to="/"
-            className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-green-primary dark:hover:text-green-light transition mb-6"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Home
-          </Link>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Contact Us
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Have a question or need help? We're here to assist you.
+    <AppShell>
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+        <header className="animate-fade-up">
+          <h1 className="text-display-xs">Get in touch</h1>
+          <p className="mt-3 text-[16px] leading-relaxed text-muted text-pretty">
+            Mypdftools is a small project, so messages come straight to one inbox and are usually
+            answered within a couple of days.
           </p>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Contact Methods */}
-          <div className="lg:col-span-1">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-4"
+        <div className="card mt-7 flex flex-wrap items-center gap-3 p-4 sm:p-5">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+            <Mail size={18} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] text-muted">Email us directly</p>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="text-[15px] font-medium text-brand-600 hover:underline dark:text-brand-400"
             >
-              {contactMethods.map((method, index) => (
-                <motion.div
-                  key={method.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="text-3xl flex-shrink-0">{method.icon}</div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                        {method.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {method.description}
-                      </p>
-                      <a
-                        href={method.link}
-                        className="text-green-primary dark:text-green-light hover:underline text-sm font-medium"
-                      >
-                        {method.value}
-                      </a>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-
-              {/* Additional Info */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6"
-              >
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  Response Time
-                </h3>
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                  We typically respond within:
-                </p>
-                <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
-                  <li>• General inquiries: 24-48 hours</li>
-                  <li>• Technical support: 12-24 hours</li>
-                  <li>• Privacy concerns: 24 hours</li>
-                </ul>
-              </motion.div>
-            </motion.div>
-          </div>
-
-          {/* Contact Form */}
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 md:p-8 border border-gray-200 dark:border-gray-700"
-            >
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                Send us a Message
-              </h2>
-
-              {success && (
-                <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <p className="text-green-800 dark:text-green-200">
-                      Thank you! Your message has been sent. We'll get back to you soon.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                  <p className="text-red-800 dark:text-red-200">{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      required
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-primary dark:focus:ring-green-light focus:border-transparent transition"
-                      placeholder="Your name"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-primary dark:focus:ring-green-light focus:border-transparent transition"
-                      placeholder="your.email@example.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Subject <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    required
-                    value={formData.subject}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-primary dark:focus:ring-green-light focus:border-transparent transition"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="general">General Inquiry</option>
-                    <option value="technical">Technical Support</option>
-                    <option value="billing">Billing Question</option>
-                    <option value="feature">Feature Request</option>
-                    <option value="bug">Report a Bug</option>
-                    <option value="privacy">Privacy Concern</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Message <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    required
-                    rows={6}
-                    value={formData.message}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-primary dark:focus:ring-green-light focus:border-transparent transition resize-none"
-                    placeholder="Tell us how we can help you..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full px-6 py-3 bg-green-primary dark:bg-green-dark text-white rounded-lg font-semibold hover:bg-green-dark dark:hover:bg-green-primary transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      Send Message
-                    </>
-                  )}
-                </button>
-              </form>
-            </motion.div>
+              {SUPPORT_EMAIL}
+            </a>
           </div>
         </div>
 
-        {/* FAQ Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-12"
-        >
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            Frequently Asked Questions
+        <section className="card mt-4 p-5 sm:p-6" aria-labelledby="contact-form">
+          <h2 id="contact-form" className="text-[17px] font-semibold">
+            Write a message
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Is my data secure?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">
-                Yes, all files are processed securely using SSL encryption. For guest users, files are deleted immediately after processing. Registered users can manage their file history.
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Do I need an account?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">
-                No, you can use all tools without an account. However, creating a free account gives you access to file history, usage analytics, and cloud storage.
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Are there file size limits?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">
-                Yes, the maximum file size is 50MB per file. This ensures fast processing and optimal performance for all users.
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Is the service really free?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">
-                Yes, all features are completely free to use. No credit card required, no hidden fees, and no usage limits.
-              </p>
-            </div>
+
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-ink/[0.03] p-3 dark:bg-white/[0.05]">
+            <Info size={15} className="mt-0.5 shrink-0 text-ink-muted dark:text-sand-400" aria-hidden />
+            <p className="text-[13px] leading-relaxed text-muted text-pretty">
+              This form has no server behind it. Filling it in and pressing the button opens your
+              own email app with the message ready to send — nothing leaves this page, and nothing
+              is stored.
+            </p>
           </div>
-        </motion.div>
+
+          <form className="mt-5 space-y-4" onSubmit={formik.handleSubmit} noValidate>
+            <div>
+              <label htmlFor="name" className={LABEL}>
+                Your name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                placeholder="Alex Doe"
+                value={formik.values.name}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                aria-invalid={Boolean(fieldError('name'))}
+                aria-describedby={fieldError('name') ? 'name-error' : undefined}
+                className={INPUT}
+              />
+              {fieldError('name') && (
+                <p
+                  id="name-error"
+                  role="alert"
+                  className="mt-1.5 text-[13px] text-red-600 dark:text-red-400"
+                >
+                  {fieldError('name')}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="email" className={LABEL}>
+                Your email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={formik.values.email}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                aria-invalid={Boolean(fieldError('email'))}
+                aria-describedby={fieldError('email') ? 'email-error' : undefined}
+                className={INPUT}
+              />
+              {fieldError('email') && (
+                <p
+                  id="email-error"
+                  role="alert"
+                  className="mt-1.5 text-[13px] text-red-600 dark:text-red-400"
+                >
+                  {fieldError('email')}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="message" className={LABEL}>
+                Message
+              </label>
+              <textarea
+                id="message"
+                name="message"
+                rows={6}
+                placeholder="What can we help with?"
+                value={formik.values.message}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                aria-invalid={Boolean(fieldError('message'))}
+                aria-describedby={fieldError('message') ? 'message-error' : undefined}
+                className={TEXTAREA}
+              />
+              {fieldError('message') && (
+                <p
+                  id="message-error"
+                  role="alert"
+                  className="mt-1.5 text-[13px] text-red-600 dark:text-red-400"
+                >
+                  {fieldError('message')}
+                </p>
+              )}
+            </div>
+
+            <Button type="submit" size="lg" icon={ExternalLink} fullWidth>
+              Open in my email app
+            </Button>
+          </form>
+        </section>
+
+        <section className="mt-8" aria-labelledby="common-questions">
+          <h2 id="common-questions" className="text-[17px] font-semibold">
+            Before you write
+          </h2>
+          <p className="mt-1 text-[14px] text-muted">
+            These come up often and are answered elsewhere on the site.
+          </p>
+
+          <dl className="mt-4 space-y-3">
+            <FaqItem question="What happens to the files I upload?">
+              They are processed on our server and deleted as soon as your download finishes. We
+              never keep the contents.{' '}
+              <Link
+                to="/privacy"
+                className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                Read the privacy policy
+              </Link>
+              .
+            </FaqItem>
+
+            <FaqItem question="Can I re-download something I converted last week?">
+              No. Because nothing is stored, there is no copy to fetch. Run the file through the
+              tool again from{' '}
+              <Link
+                to="/tools"
+                className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                the tool catalogue
+              </Link>
+              .
+            </FaqItem>
+
+            <FaqItem question="Do I need an account?">
+              Only if you want a log of which tools you used. Every tool works without signing in.
+            </FaqItem>
+
+            <FaqItem question="Is there a file size limit?">
+              Yes — 50 MB per file. Larger PDFs usually shrink below that with the Compress tool.
+            </FaqItem>
+          </dl>
+        </section>
       </div>
+    </AppShell>
+  );
+}
+
+function FaqItem({ question, children }: { question: string; children: React.ReactNode }) {
+  return (
+    <div className="card p-4 sm:p-5">
+      <dt className="text-[14.5px] font-medium">{question}</dt>
+      <dd className="mt-1.5 text-[14px] leading-relaxed text-muted text-pretty">{children}</dd>
     </div>
   );
-};
+}
 
-export default Contact;
-
+function buildMailto({ name, email, message }: ContactValues): string {
+  const subject = `Mypdftools — message from ${name.trim()}`;
+  const body = `${message.trim()}\n\n—\n${name.trim()}\n${email.trim()}`;
+  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(body)}`;
+}

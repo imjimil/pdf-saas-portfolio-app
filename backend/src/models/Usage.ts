@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { OPERATIONS } from '../lib/operations';
 
 export interface IUsage extends Document {
   userId: mongoose.Types.ObjectId;
@@ -27,18 +28,7 @@ const usageSchema = new Schema<IUsage>(
     operation: {
       type: String,
       required: true,
-      enum: [
-        'word',
-        'pdf',
-        'split',
-        'txt',
-        'epub',
-        'ocr',
-        'merge',
-        'compress',
-        'watermark',
-        'protect',
-      ],
+      enum: OPERATIONS,
     },
     fileCount: {
       type: Number,

@@ -1,346 +1,204 @@
-import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, Moon, Sun, LogOut, User as UserIcon, History } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { ToolSheet } from './ToolSheet';
+import { Logo } from './ui/Logo';
+import { Button, ButtonLink } from './ui/Button';
+import { cn } from '../lib/cn';
 
-interface NavigationProps {
-  showAuth?: boolean;
-  showBack?: boolean;
-  backPath?: string;
-  backLabel?: string;
-}
-
-const tools = [
-  { name: 'PDF to Word', icon: '📄', path: '/pdf-to-word' },
-  { name: 'Image to PDF', icon: '🖼️', path: '/image-to-pdf' },
-  { name: 'Split PDF', icon: '✂️', path: '/split-pdf' },
-  { name: 'Merge PDF', icon: '🔗', path: '/merge-pdf' },
-  { name: 'Compress PDF', icon: '🗜️', path: '/compress-pdf' },
-  { name: 'PDF to Text', icon: '📝', path: '/pdf-to-text' },
-  { name: 'PDF to EPUB', icon: '📚', path: '/pdf-to-epub' },
-  { name: 'PDF OCR', icon: '👁️', path: '/pdf-ocr' },
-  { name: 'Watermark PDF', icon: '💧', path: '/watermark-pdf' },
-  { name: 'Protect PDF', icon: '🔒', path: '/protect-pdf' },
-];
-
-const Navigation = ({ 
-  showAuth = true, 
-  showBack = false, 
-  backPath = '/tools',
-  backLabel = 'Back to Tools'
-}: NavigationProps) => {
-  const { isAuthenticated, logout } = useAuth();
-  const { isDark, toggleDarkMode } = useDarkMode();
-  const navigate = useNavigate();
+/**
+ * Top bar.
+ *
+ * Translucent and blurred like iOS navigation chrome: it sits flush with the
+ * page at rest and grows a hairline separator once content scrolls beneath it.
+ * On mobile the primary destinations live in the bottom TabBar instead, so this
+ * bar stays deliberately sparse.
+ */
+export function Navigation() {
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const toolsRef = useRef<HTMLDivElement>(null);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Close dropdown when clicking outside (desktop only)
+  const { isAuthenticated, user, logout } = useAuth();
+  const { isDark, toggleDarkMode } = useDarkMode();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const accountRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (toolsRef.current && !toolsRef.current.contains(event.target as Node)) {
-        // Only close if not clicking in mobile menu
-        if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-          setToolsOpen(false);
-        }
-      }
-    };
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-    if (toolsOpen && !mobileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [toolsOpen, mobileMenuOpen]);
-
-  const handleToolClick = (tool: typeof tools[0], closeMobileMenu: boolean = false) => {
-    // Close dropdowns first
+  useEffect(() => {
     setToolsOpen(false);
-    if (closeMobileMenu) {
-      setMobileMenuOpen(false);
-    }
-    // Navigate immediately
-    navigate(tool.path);
+    setAccountOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [accountOpen]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link 
-              to="/" 
-              className="text-xl sm:text-2xl font-bold text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
-            >
-              My PDF Tools
-            </Link>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
-            {/* Tools Dropdown */}
-            <div className="relative" ref={toolsRef}>
-              <div className="flex items-center">
-                <Link
-                  to="/tools"
-                  className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+    <header
+      className={cn(
+        'sticky top-0 z-40 surface-glass transition-shadow duration-300',
+        scrolled && 'border-b hairline'
+      )}
+    >
+      <nav
+        aria-label="Main"
+        className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6"
+      >
+        <Link to="/" aria-label="Mypdftools home" className="shrink-0">
+          <Logo />
+        </Link>
+
+        <div className="relative hidden md:flex md:items-center md:gap-1">
+          <button
+            type="button"
+            onClick={() => setToolsOpen((open) => !open)}
+            aria-expanded={toolsOpen}
+            aria-haspopup="dialog"
+            className="inline-flex h-9 items-center gap-1 rounded-full px-3 text-[14.5px] font-medium
+                       text-ink-soft transition-colors hover:bg-ink/[0.05] dark:text-sand-300 dark:hover:bg-white/[0.07]"
+          >
+            Tools
+            <ChevronDown
+              size={15}
+              className={cn('transition-transform duration-200', toolsOpen && 'rotate-180')}
+              aria-hidden
+            />
+          </button>
+          <ToolSheet open={toolsOpen} onClose={() => setToolsOpen(false)} />
+
+          <NavLink to="/tools">All tools</NavLink>
+          <NavLink to="/contact">Contact</NavLink>
+        </div>
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="tap-target grid place-items-center rounded-full text-ink-soft transition-colors
+                       hover:bg-ink/[0.05] dark:text-sand-300 dark:hover:bg-white/[0.07]"
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {isAuthenticated ? (
+            <div ref={accountRef} className="relative hidden md:block">
+              <button
+                type="button"
+                onClick={() => setAccountOpen((open) => !open)}
+                aria-expanded={accountOpen}
+                aria-haspopup="menu"
+                className="tap-target grid h-9 w-9 place-items-center rounded-full bg-brand-600
+                           text-[13px] font-semibold uppercase text-white"
+              >
+                {(user?.name || user?.email || '?').charAt(0)}
+              </button>
+
+              {accountOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right animate-scale-in
+                             overflow-hidden rounded-2xl border hairline bg-white shadow-lifted dark:bg-[#191e1c]"
                 >
-                  Tools
-                </Link>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setToolsOpen(!toolsOpen);
-                  }}
-                  className="px-2 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition ml-1"
-                >
-                  <svg
-                    className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-              
-              {toolsOpen && (
-                <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2 max-h-96 overflow-y-auto">
-                  <div className="grid grid-cols-2 sm:grid-cols-1 gap-1 px-2">
-                    {tools.map((tool) => (
-                      <button
-                        key={tool.name}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleToolClick(tool, false);
-                        }}
-                        className="w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 rounded"
-                      >
-                        <span className="text-base sm:text-lg flex-shrink-0">{tool.icon}</span>
-                        <span className="text-xs sm:text-sm truncate">{tool.name}</span>
-                      </button>
-                    ))}
+                  <div className="border-b hairline px-3.5 py-3">
+                    <p className="truncate text-[13.5px] font-medium text-ink dark:text-sand-100">
+                      {user?.name || 'Signed in'}
+                    </p>
+                    <p className="truncate text-[12.5px] text-muted">{user?.email}</p>
+                  </div>
+                  <div className="p-1.5">
+                    <MenuItem to="/my-dashboard" icon={History}>Activity</MenuItem>
+                    <MenuItem to="/profile" icon={UserIcon}>Account settings</MenuItem>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[14px]
+                                 text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
+                    >
+                      <LogOut size={16} aria-hidden />
+                      Sign out
+                    </button>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDark ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-
-            {showBack && (
-              <button
-                onClick={() => navigate(backPath)}
-                className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-              >
-                {backLabel}
-              </button>
-            )}
-
-            {showAuth && (
-              <>
-                {isAuthenticated ? (
-                  <>
-                    <Link
-                      to="/my-dashboard"
-                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                    >
-                      File History
-                    </Link>
-                    <Link
-                      to="/profile"
-                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                    >
-                      Profile
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        navigate('/');
-                      }}
-                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      className="px-3 lg:px-4 py-2 text-sm lg:text-base text-green-primary dark:text-green-light hover:text-green-dark dark:hover:text-green-primary transition"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      to="/register"
-                      className="px-3 lg:px-4 py-2 text-sm lg:text-base bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
-                    >
-                      Get Started
-                    </Link>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center space-x-2">
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDark ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {mobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
-          </div>
+          ) : (
+            <div className="hidden items-center gap-1.5 md:flex">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+                Sign in
+              </Button>
+              <ButtonLink to="/register" size="sm">
+                Get started
+              </ButtonLink>
+            </div>
+          )}
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div ref={mobileMenuRef} className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4 space-y-2 z-50 relative bg-white dark:bg-gray-800">
-            {showAuth && (
-              <>
-                {isAuthenticated ? (
-                  <>
-                    {/* Combined Tools Link and Dropdown */}
-                    <div>
-                      <div className="flex items-center px-4">
-                        <Link
-                          to="/tools"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="flex-1 px-0 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                        >
-                          Tools
-                        </Link>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setToolsOpen(!toolsOpen);
-                          }}
-                          className="px-2 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
-                        >
-                          <svg
-                            className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                      </div>
-                      {toolsOpen && (
-                        <div className="mt-2 px-4 grid grid-cols-2 gap-2">
-                          {tools.map((tool) => (
-                            <Link
-                              key={tool.name}
-                              to={tool.path}
-                              onClick={() => {
-                                setToolsOpen(false);
-                                setMobileMenuOpen(false);
-                              }}
-                              className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex items-center gap-2 touch-manipulation"
-                            >
-                              <span className="text-base flex-shrink-0">{tool.icon}</span>
-                              <span className="text-xs truncate">{tool.name}</span>
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <Link
-                      to="/my-dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                    >
-                      File History
-                    </Link>
-                    <Link
-                      to="/profile"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                    >
-                      Profile
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        navigate('/');
-                        setMobileMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-green-primary dark:text-green-light hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 bg-green-primary dark:bg-green-dark text-white rounded-lg hover:bg-green-dark dark:hover:bg-green-primary transition"
-                    >
-                      Get Started
-                    </Link>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
-};
+}
+
+function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const active = pathname === to;
+
+  return (
+    <Link
+      to={to}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'inline-flex h-9 items-center rounded-full px-3 text-[14.5px] font-medium transition-colors',
+        active
+          ? 'bg-ink/[0.06] text-ink dark:bg-white/[0.09] dark:text-sand-100'
+          : 'text-ink-soft hover:bg-ink/[0.05] dark:text-sand-300 dark:hover:bg-white/[0.07]'
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function MenuItem({
+  to,
+  icon: Icon,
+  children,
+}: {
+  to: string;
+  icon: typeof History;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      role="menuitem"
+      className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] text-ink-soft
+                 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-white/[0.07]"
+    >
+      <Icon size={16} aria-hidden />
+      {children}
+    </Link>
+  );
+}
 
 export default Navigation;
-

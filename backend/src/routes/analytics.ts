@@ -1,9 +1,17 @@
 import express, { Response } from 'express';
+import mongoose from 'mongoose';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import Usage from '../models/Usage';
 import File from '../models/File';
 
 const router = express.Router();
+
+/**
+ * `find()` casts a string id to an ObjectId automatically, but `aggregate()`
+ * does not — an uncast `$match` silently matches nothing, which is why the
+ * totals below always came back as zero.
+ */
+const asObjectId = (id: string) => new mongoose.Types.ObjectId(id);
 
 // Middleware to require authentication
 const requireAuth = (
@@ -62,7 +70,7 @@ router.get(
       // Get total statistics
       const totalFiles = await File.countDocuments({ userId });
       const totalSizeResult = await File.aggregate([
-        { $match: { userId } },
+        { $match: { userId: asObjectId(userId) } },
         { $group: { _id: null, totalSize: { $sum: '$fileSize' } } },
       ]);
       const totalSize = totalSizeResult[0]?.totalSize || 0;
@@ -101,7 +109,7 @@ router.get(
       const operationStats = await Usage.aggregate([
         {
           $match: {
-            userId,
+            userId: asObjectId(userId),
             date: { $gte: startDate },
           },
         },

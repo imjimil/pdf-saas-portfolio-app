@@ -1,171 +1,152 @@
-import { useNavigate } from 'react-router-dom';
-import Navigation from '../components/Navigation';
-import { motion } from 'framer-motion';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Search, SearchX, ShieldCheck } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Button } from '../components/ui/Button';
+import { CATEGORY_LABELS, Tool, toolsByCategory } from '../lib/tools';
 
-interface Tool {
-  name: string;
-  description: string;
-  icon: string;
-  path: string;
-  endpoint?: string;
-  color: string;
-}
+export default function Tools() {
+  const [query, setQuery] = useState('');
 
-const Tools = () => {
-  const navigate = useNavigate();
+  const groups = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return toolsByCategory();
 
-  const tools: Tool[] = [
-    {
-      name: 'PDF to Word',
-      description: 'Convert PDF to editable Word document',
-      icon: '📄',
-      path: '/pdf-to-word',
-      color: 'from-blue-500 to-blue-600',
-    },
-    {
-      name: 'Word to PDF',
-      description: 'Convert Word documents to PDF format',
-      icon: '📝',
-      path: '/word-to-pdf',
-      color: 'from-emerald-500 to-emerald-600',
-    },
-    {
-      name: 'Image to PDF',
-      description: 'Convert images to PDF format',
-      icon: '🖼️',
-      path: '/image-to-pdf',
-      color: 'from-purple-500 to-purple-600',
-    },
-    {
-      name: 'Split PDF',
-      description: 'Split PDF into multiple files by pages',
-      icon: '✂️',
-      path: '/split-pdf',
-      color: 'from-red-500 to-red-600',
-    },
-    {
-      name: 'Merge PDF',
-      description: 'Combine multiple PDFs into one',
-      icon: '🔗',
-      path: '/merge-pdf',
-      color: 'from-green-500 to-green-600',
-    },
-    {
-      name: 'Compress PDF',
-      description: 'Reduce PDF file size',
-      icon: '🗜️',
-      path: '/compress-pdf',
-      color: 'from-orange-500 to-orange-600',
-    },
-    {
-      name: 'PDF to Text',
-      description: 'Extract text from PDF',
-      icon: '📝',
-      path: '/pdf-to-text',
-      color: 'from-indigo-500 to-indigo-600',
-    },
-    {
-      name: 'PDF to EPUB',
-      description: 'Convert PDF to EPUB format',
-      icon: '📚',
-      path: '/pdf-to-epub',
-      color: 'from-pink-500 to-pink-600',
-    },
-    {
-      name: 'PDF OCR',
-      description: 'Extract text using OCR technology',
-      icon: '👁️',
-      path: '/pdf-ocr',
-      color: 'from-teal-500 to-teal-600',
-    },
-    {
-      name: 'Watermark PDF',
-      description: 'Add watermark to PDF documents',
-      icon: '💧',
-      path: '/watermark-pdf',
-      color: 'from-cyan-500 to-cyan-600',
-    },
-    {
-      name: 'Protect PDF',
-      description: 'Add password protection to PDF',
-      icon: '🔒',
-      path: '/protect-pdf',
-      color: 'from-yellow-500 to-yellow-600',
-    },
-  ];
+    return toolsByCategory()
+      .map((group) => ({
+        ...group,
+        tools: group.tools.filter(
+          (tool) =>
+            tool.name.toLowerCase().includes(needle) ||
+            tool.summary.toLowerCase().includes(needle)
+        ),
+      }))
+      .filter((group) => group.tools.length > 0);
+  }, [query]);
 
-  const handleToolClick = (tool: Tool) => {
-    navigate(tool.path);
-  };
+  const matches = groups.reduce((total, group) => total + group.tools.length, 0);
 
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
-      <Navigation showAuth={true} />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            All PDF Tools
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Choose a tool to get started. All tools are free to use and process your files instantly.
+    <AppShell>
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+        <header className="animate-fade-up">
+          <h1 className="text-display-xs sm:text-display-sm">Every tool, in one place</h1>
+          <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-muted text-pretty">
+            All of them are free and none of them need an account. Files are processed on our
+            server and deleted the moment your download finishes.
           </p>
-        </motion.div>
+        </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-          {tools.map((tool, index) => (
-            <motion.div
-              key={tool.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={{ y: -5, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleToolClick(tool)}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-200 dark:border-gray-700 overflow-hidden group flex flex-col"
-            >
-              <div className={`h-1.5 sm:h-2 bg-gradient-to-r ${tool.color}`} />
-              <div className="p-4 sm:p-6 flex-1 flex flex-col">
-                <div className="flex items-start gap-3 mb-2 sm:mb-3">
-                  <div className="text-2xl sm:text-3xl md:text-4xl flex-shrink-0 group-hover:scale-110 transition-transform">
-                    {tool.icon}
-                  </div>
-                  <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 dark:text-white leading-tight flex-1 min-w-0 break-words">
-                    {tool.name}
-                  </h3>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 sm:line-clamp-none mb-3 sm:mb-0 flex-1">
-                  {tool.description}
-                </p>
-                <div className="mt-auto pt-3 sm:pt-4 flex items-center text-green-primary dark:text-green-light text-xs sm:text-sm font-medium">
-                  <span>Use Tool</span>
-                  <svg
-                    className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+        <div className="relative mt-7 sm:mt-8">
+          <label htmlFor="tool-search" className="sr-only">
+            Search tools
+          </label>
+          <Search
+            size={18}
+            aria-hidden
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted dark:text-sand-400"
+          />
+          <input
+            id="tool-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by name or by what it does"
+            autoComplete="off"
+            className="h-12 w-full rounded-2xl border border-ink/[0.09] bg-white pl-11 pr-4 text-[15px]
+                       text-ink placeholder:text-ink-muted/70 transition-colors focus:border-brand-500
+                       dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-sand-100
+                       dark:placeholder:text-sand-500"
+          />
         </div>
+
+        {query.trim() && (
+          <p aria-live="polite" className="mt-3 text-[13.5px] text-muted">
+            {matches === 0
+              ? 'No tools match your search.'
+              : `${matches} ${matches === 1 ? 'tool' : 'tools'} match “${query.trim()}”.`}
+          </p>
+        )}
+
+        {matches === 0 ? (
+          <div className="card mt-6 animate-scale-in px-6 py-12 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-ink/[0.05] text-ink-muted dark:bg-white/[0.06] dark:text-sand-400">
+              <SearchX size={22} aria-hidden />
+            </span>
+            <h2 className="mt-4 text-lg font-semibold">Nothing matched that</h2>
+            <p className="mx-auto mt-1.5 max-w-sm text-[14.5px] text-muted text-pretty">
+              Try a shorter word, or clear the search to browse the full catalogue.
+            </p>
+            <div className="mt-5 flex justify-center">
+              <Button variant="secondary" onClick={() => setQuery('')}>
+                Clear search
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-8 space-y-10">
+            {groups.map((group) => (
+              <section key={group.category} aria-labelledby={`category-${group.category}`}>
+                <h2
+                  id={`category-${group.category}`}
+                  className="text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-muted dark:text-sand-400"
+                >
+                  {CATEGORY_LABELS[group.category]}
+                </h2>
+                <div className="mt-3.5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                  {group.tools.map((tool) => (
+                    <ToolCard key={tool.id} tool={tool} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-10 flex items-start justify-center gap-2 text-center text-[13px] text-muted">
+          <ShieldCheck size={15} className="mt-px shrink-0" aria-hidden />
+          Nothing you upload is kept. Create an account only if you want a log of what you
+          converted.
+        </p>
       </div>
-    </div>
+    </AppShell>
   );
-};
+}
 
-export default Tools;
+function ToolCard({ tool }: { tool: Tool }) {
+  const Icon = tool.icon;
 
+  return (
+    <Link
+      to={tool.path}
+      className="card group flex flex-col p-5 transition-[transform,box-shadow] duration-200 ease-ios
+                 hover:-translate-y-0.5 hover:shadow-lifted"
+    >
+      <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+        <Icon size={21} aria-hidden />
+      </span>
+
+      <h3 className="mt-3.5 flex flex-wrap items-center gap-2 text-[16px] font-semibold">
+        {tool.name}
+        {tool.badge && (
+          <span className="rounded-full bg-brand-500/12 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
+            {tool.badge}
+          </span>
+        )}
+      </h3>
+
+      <p className="mt-1.5 flex-1 text-[14px] leading-relaxed text-muted text-pretty">
+        {tool.summary}
+      </p>
+
+      <span className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-brand-600 dark:text-brand-400">
+        Open tool
+        <ArrowRight
+          size={15}
+          aria-hidden
+          className="transition-transform duration-200 ease-ios group-hover:translate-x-1"
+        />
+      </span>
+    </Link>
+  );
+}

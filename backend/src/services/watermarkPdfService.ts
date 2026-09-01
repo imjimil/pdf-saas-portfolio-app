@@ -1,112 +1,166 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
+import { StandardFonts, rgb, degrees, PDFPage, PDFFont } from 'pdf-lib';
+import { AppError, toAppError } from '../lib/errors';
+import { loadPdf } from '../lib/pdf';
+
+/**
+ * Text watermarking.
+ *
+ * Rotation is now actually applied — the previous version accepted a rotation
+ * option and silently ignored it, so every diagonal watermark came out flat.
+ */
+
+export type WatermarkPosition =
+  | 'center'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'tile';
+
+export interface WatermarkOptions {
+  position?: WatermarkPosition;
+  opacity?: number;
+  fontSize?: number;
+  rotation?: number;
+  color?: { r: number; g: number; b: number };
+  /** Apply only to these 1-based pages; all pages when omitted. */
+  pages?: number[];
+}
+
+export interface WatermarkResult {
+  outputPath: string;
+  pagesMarked: number;
+}
 
 export class WatermarkPdfService {
   static async addWatermark(
-    pdfPath: string,
+    inputPath: string,
     outputPath: string,
-    watermarkText: string,
-    options?: {
-      position?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-      opacity?: number;
-      fontSize?: number;
-      rotation?: number;
-      color?: { r: number; g: number; b: number };
+    text: string,
+    options: WatermarkOptions = {}
+  ): Promise<WatermarkResult> {
+    const watermark = text?.trim();
+    if (!watermark) {
+      throw new AppError('INVALID_INPUT', 'Enter the watermark text.');
     }
-  ): Promise<void> {
+    if (watermark.length > 120) {
+      throw new AppError('INVALID_INPUT', 'Watermark text is limited to 120 characters.');
+    }
+
     try {
-      const pdfBytes = await fs.readFile(pdfPath);
-      
-      // Load PDF document
-      let pdfDoc: PDFDocument;
-      try {
-        pdfDoc = await PDFDocument.load(pdfBytes);
-      } catch (loadError: any) {
-        if (loadError.message && (loadError.message.includes('encrypt') || loadError.message.includes('password'))) {
-          throw new Error('Cannot watermark password-protected PDFs. Please remove the password first.');
-        }
-        throw loadError;
+      const pdf = await loadPdf(inputPath, { ignoreEncryption: false });
+      const font = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+      const position = options.position ?? 'center';
+      const opacity = clamp(options.opacity ?? 0.25, 0.02, 1);
+      const rotation = options.rotation ?? -45;
+      const color = options.color ?? { r: 0.45, g: 0.45, b: 0.5 };
+
+      // pdf-lib's standard fonts are WinAnsi-encoded and throw on other glyphs.
+      const safeText = watermark.replace(/[^\x20-\xFF]/g, '');
+      if (!safeText.trim()) {
+        throw new AppError(
+          'INVALID_INPUT',
+          'The watermark text uses characters that are not supported.',
+          'Try using Latin letters, numbers and basic punctuation.'
+        );
       }
-      
-      const pages = pdfDoc.getPages();
-      const position = options?.position || 'center';
-      const opacity = options?.opacity || 0.3;
-      const fontSize = options?.fontSize || 50;
-      const rotation = options?.rotation || -45;
-      const color = options?.color || { r: 0, g: 0, b: 0 };
-      
-      // Embed font
-      let font;
-      try {
-        font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      } catch (fontError: any) {
-        throw new Error(`Failed to embed font: ${fontError.message}`);
-      }
-      
-      // Calculate position based on option
-      for (const page of pages) {
+
+      const pages = pdf.getPages();
+      const selected = options.pages?.length
+        ? options.pages.filter((page) => page >= 1 && page <= pages.length)
+        : pages.map((_, index) => index + 1);
+
+      for (const pageNumber of selected) {
+        const page = pages[pageNumber - 1];
         const { width, height } = page.getSize();
-        let x = width / 2;
-        let y = height / 2;
-        
-        switch (position) {
-          case 'top-left':
-            x = width * 0.1;
-            y = height * 0.9;
-            break;
-          case 'top-right':
-            x = width * 0.9;
-            y = height * 0.9;
-            break;
-          case 'bottom-left':
-            x = width * 0.1;
-            y = height * 0.1;
-            break;
-          case 'bottom-right':
-            x = width * 0.9;
-            y = height * 0.1;
-            break;
-          case 'center':
-          default:
-            x = width / 2;
-            y = height / 2;
-            break;
+
+        // Scale to the page so the watermark reads the same on A4 and A3.
+        const fontSize =
+          options.fontSize ?? Math.max(18, Math.min(width, height) * 0.09);
+
+        if (position === 'tile') {
+          this.drawTiled(page, safeText, font, fontSize, opacity, color, rotation);
+          continue;
         }
-        
-        // Calculate text width for centering
-        const textWidth = font.widthOfTextAtSize(watermarkText, fontSize);
-        x -= textWidth / 2;
-        
-        // Note: Rotation is complex in pdf-lib, drawing without rotation for now
-        page.drawText(watermarkText, {
+
+        const textWidth = font.widthOfTextAtSize(safeText, fontSize);
+        const { x, y } = anchor(position, width, height, textWidth, fontSize);
+
+        page.drawText(safeText, {
           x,
           y,
           size: fontSize,
           font,
           color: rgb(color.r, color.g, color.b),
           opacity,
+          rotate: degrees(rotation),
         });
       }
-      
-      // Save PDF
-      let pdfBytesModified: Uint8Array;
-      try {
-        pdfBytesModified = await pdfDoc.save();
-      } catch (saveError: any) {
-        throw new Error(`Failed to save watermarked PDF: ${saveError.message}`);
+
+      await fs.writeFile(outputPath, await pdf.save());
+      return { outputPath, pagesMarked: selected.length };
+    } catch (error) {
+      throw toAppError(error, 'The watermark could not be applied.');
+    }
+  }
+
+  private static drawTiled(
+    page: PDFPage,
+    text: string,
+    font: PDFFont,
+    fontSize: number,
+    opacity: number,
+    color: { r: number; g: number; b: number },
+    rotation: number
+  ): void {
+    const { width, height } = page.getSize();
+    const tileSize = fontSize * 0.6;
+    const textWidth = font.widthOfTextAtSize(text, tileSize);
+    const stepX = textWidth + 70;
+    const stepY = tileSize * 5;
+
+    for (let y = -stepY; y < height + stepY; y += stepY) {
+      for (let x = -stepX; x < width + stepX; x += stepX) {
+        page.drawText(text, {
+          x,
+          y,
+          size: tileSize,
+          font,
+          color: rgb(color.r, color.g, color.b),
+          opacity: opacity * 0.75,
+          rotate: degrees(rotation),
+        });
       }
-      
-      // Write to file
-      try {
-        await fs.writeFile(outputPath, pdfBytesModified);
-      } catch (writeError: any) {
-        throw new Error(`Failed to write watermarked PDF file: ${writeError.message}`);
-      }
-    } catch (error: any) {
-      console.error('Watermark error details:', error);
-      console.error('Error stack:', error.stack);
-      throw new Error(`Watermark addition failed: ${error.message || 'Unknown error'}`);
     }
   }
 }
 
+function anchor(
+  position: Exclude<WatermarkPosition, 'tile'>,
+  pageWidth: number,
+  pageHeight: number,
+  textWidth: number,
+  fontSize: number
+): { x: number; y: number } {
+  const margin = 40;
+
+  switch (position) {
+    case 'top-left':
+      return { x: margin, y: pageHeight - margin - fontSize };
+    case 'top-right':
+      return { x: pageWidth - textWidth - margin, y: pageHeight - margin - fontSize };
+    case 'bottom-left':
+      return { x: margin, y: margin };
+    case 'bottom-right':
+      return { x: pageWidth - textWidth - margin, y: margin };
+    case 'center':
+    default:
+      return { x: (pageWidth - textWidth) / 2, y: pageHeight / 2 - fontSize / 2 };
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}

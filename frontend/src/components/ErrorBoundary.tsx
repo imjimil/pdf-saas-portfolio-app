@@ -10,73 +10,45 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): State {
-    return {
-      hasError: true,
-      error,
-    };
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Unhandled UI error:', error, info);
   }
 
   render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
+    if (!this.state.hasError) return this.props.children;
+    if (this.props.fallback) return this.props.fallback;
 
-      return (
-        <div className="min-h-screen bg-cream-light dark:bg-gray-900 flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="text-center">
-              <div className="text-6xl mb-4">⚠️</div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Something went wrong
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We're sorry, but something unexpected happened. Please try refreshing the page.
-              </p>
-              {(import.meta.env as any).DEV && this.state.error && (
-                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-left">
-                  <p className="text-sm font-mono text-red-800 dark:text-red-200">
-                    {this.state.error.toString()}
-                  </p>
-                  {this.state.error.stack && (
-                    <pre className="text-xs text-red-700 dark:text-red-300 mt-2 overflow-auto">
-                      {this.state.error.stack}
-                    </pre>
-                  )}
-                </div>
-              )}
-              <button
-                onClick={() => {
-                  this.setState({ hasError: false, error: null });
-                  window.location.reload();
-                }}
-                className="px-6 py-3 bg-green-primary dark:bg-green-dark text-white rounded-lg font-semibold hover:bg-green-dark dark:hover:bg-green-primary transition"
-              >
-                Refresh Page
-              </button>
-            </div>
-          </div>
+    return (
+      <div className="grid min-h-[100dvh] place-items-center bg-sand-50 px-4 dark:bg-[#0b0f0e]">
+        <div className="w-full max-w-md rounded-3xl border border-ink/[0.07] bg-white p-7 text-center shadow-card dark:border-white/[0.08] dark:bg-white/[0.04]">
+          <h1 className="text-xl font-semibold">Something went wrong</h1>
+          <p className="mt-2 text-[15px] text-ink-muted dark:text-sand-400">
+            The page ran into an unexpected problem. Reloading usually fixes it.
+          </p>
+
+          {import.meta.env.DEV && this.state.error && (
+            <pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-red-50 p-3 text-left text-[11px] text-red-800 dark:bg-red-500/10 dark:text-red-300">
+              {this.state.error.stack ?? this.state.error.message}
+            </pre>
+          )}
+
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 inline-flex h-11 items-center rounded-full bg-brand-600 px-6 text-[15px] font-medium text-white transition-colors hover:bg-brand-700"
+          >
+            Reload page
+          </button>
         </div>
-      );
-    }
-
-    return this.props.children;
+      </div>
+    );
   }
 }
 
 export default ErrorBoundary;
-

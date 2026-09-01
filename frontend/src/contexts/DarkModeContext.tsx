@@ -1,50 +1,67 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from 'react';
 
-interface DarkModeContextType {
+interface DarkModeContextValue {
   isDark: boolean;
   toggleDarkMode: () => void;
+  setDarkMode: (value: boolean) => void;
 }
 
-const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined);
+const DarkModeContext = createContext<DarkModeContextValue | null>(null);
 
-export const DarkModeProvider = ({ children }: { children: ReactNode }) => {
-  const [isDark, setIsDark] = useState(() => {
-    // Check localStorage first, then system preference
-    const saved = localStorage.getItem('darkMode');
-    if (saved !== null) {
-      return saved === 'true';
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+const STORAGE_KEY = 'theme';
+
+export function DarkModeProvider({ children }: { children: ReactNode }) {
+  // The inline script in index.html already set the class before paint; read it
+  // back so React's first render agrees and the page never flashes.
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined'
+      ? document.documentElement.classList.contains('dark')
+      : false
+  );
 
   useEffect(() => {
-    // Update localStorage when dark mode changes
-    localStorage.setItem('darkMode', isDark.toString());
-    
-    // Update document class for Tailwind dark mode
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem(STORAGE_KEY, isDark ? 'dark' : 'light');
+
+    // Keeps the iOS status bar tint in step with the theme.
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', isDark ? '#0b0f0e' : '#faf9f7');
   }, [isDark]);
 
-  const toggleDarkMode = () => {
-    setIsDark((prev) => !prev);
-  };
+  // Follow the system setting until the user makes an explicit choice.
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (event: MediaQueryListEvent) => {
+      if (!localStorage.getItem(STORAGE_KEY)) setIsDark(event.matches);
+    };
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
 
-  return (
-    <DarkModeContext.Provider value={{ isDark, toggleDarkMode }}>
-      {children}
-    </DarkModeContext.Provider>
+  const value = useMemo(
+    () => ({
+      isDark,
+      toggleDarkMode: () => setIsDark((current) => !current),
+      setDarkMode: setIsDark,
+    }),
+    [isDark]
   );
-};
 
-export const useDarkMode = () => {
+  return <DarkModeContext.Provider value={value}>{children}</DarkModeContext.Provider>;
+}
+
+export function useDarkMode(): DarkModeContextValue {
   const context = useContext(DarkModeContext);
-  if (context === undefined) {
-    throw new Error('useDarkMode must be used within a DarkModeProvider');
+  if (!context) {
+    throw new Error('useDarkMode must be used inside a DarkModeProvider');
   }
   return context;
-};
-
+}

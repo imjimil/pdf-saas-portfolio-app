@@ -1,41 +1,63 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { Loader2 } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { toast } from '../components/ui/Toast';
+import { useAuth } from '../contexts/AuthContext';
 
-const AuthCallback = () => {
+export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  // Strict mode runs effects twice; the redirect must only happen once.
+  const handled = useRef(false);
+
   useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+
+    const error = searchParams.get('error');
     const token = searchParams.get('token');
     const email = searchParams.get('email');
-    const error = searchParams.get('error');
+    const id = searchParams.get('id') ?? searchParams.get('userId');
 
     if (error) {
-      navigate(`/login?error=${encodeURIComponent(error)}`);
+      toast.error('Google sign-in failed', error);
+      navigate('/login', { replace: true });
       return;
     }
 
-    if (token && email) {
-      // Generate a temporary id from email (backend should provide id, but this works for now)
-      const userId = email.split('@')[0] + '_' + Date.now();
-      login({ id: userId, email }, token);
-      navigate('/tools');
-    } else {
-      navigate('/login?error=Authentication failed');
+    if (!token || !email) {
+      toast.error(
+        'Google sign-in failed',
+        'The sign-in link was incomplete. Please try again.'
+      );
+      navigate('/login', { replace: true });
+      return;
     }
+
+    // The callback does not always carry a user id; the email identifies the
+    // account just as well and stays stable across sessions.
+    login({ id: id ?? email, email }, token);
+    toast.success('Signed in', email);
+    navigate('/tools', { replace: true });
   }, [searchParams, navigate, login]);
 
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-green-primary dark:text-green-light text-2xl mb-4">Loading...</div>
-        <p className="text-gray-600 dark:text-gray-300">Completing authentication...</p>
+    <AppShell>
+      <div
+        role="status"
+        className="grid min-h-[60vh] place-items-center px-4 text-center"
+      >
+        <div>
+          <Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600" aria-hidden />
+          <p className="mt-4 text-[15px] font-medium text-ink dark:text-sand-100">
+            Finishing sign-in
+          </p>
+          <p className="mt-1 text-[14px] text-muted">This only takes a second.</p>
+        </div>
       </div>
-    </div>
+    </AppShell>
   );
-};
-
-export default AuthCallback;
-
+}

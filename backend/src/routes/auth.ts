@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { JWT_SECRET } from '../lib/config';
 import User from '../models/User';
 import File from '../models/File';
 import Usage from '../models/Usage';
@@ -132,7 +133,7 @@ router.post('/register', async (req: Request, res: Response) => {
     // Generate token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || 'fallback-secret',
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -177,7 +178,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Generate token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || 'fallback-secret',
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -235,7 +236,7 @@ if (googleClientId && googleClientSecret) {
         // Generate token
         const token = jwt.sign(
           { userId: user._id },
-          process.env.JWT_SECRET || 'fallback-secret',
+          JWT_SECRET,
           { expiresIn: '7d' }
         );
 

@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { OPERATIONS } from '../lib/operations';
 
 export interface IFile extends Document {
   userId?: mongoose.Types.ObjectId;
@@ -32,19 +33,7 @@ const fileSchema = new Schema<IFile>(
     operation: {
       type: String,
       required: true,
-      enum: [
-        'word',
-        'word-to-pdf',
-        'pdf',
-        'split',
-        'txt',
-        'epub',
-        'ocr',
-        'merge',
-        'compress',
-        'watermark',
-        'protect',
-      ],
+      enum: OPERATIONS,
     },
     fileSize: {
       type: Number,

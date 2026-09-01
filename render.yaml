@@ -1,13 +1,15 @@
-# Render Blueprint — deploy backend from GitHub
-# Docs: https://render.com/docs/blueprint-spec
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# The backend runs as a Docker image because high-fidelity PDF work needs real
+# document engines (LibreOffice, Ghostscript, qpdf, Poppler, Tesseract) that do
+# not exist in Render's plain Node runtime.
 services:
   - type: web
-    name: mypdftools-backend
-    runtime: node
+    name: mypdftools-api
+    runtime: docker
     rootDir: backend
-    plan: free
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
+    dockerfilePath: ./Dockerfile
+    plan: starter
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -28,3 +30,5 @@ services:
         sync: false
       - key: OCR_SPACE_API_KEY
         sync: false
+      - key: MAX_UPLOAD_MB
+        value: "50"

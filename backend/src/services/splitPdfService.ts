@@ -1,72 +1,210 @@
-import { PDFDocument } from 'pdf-lib';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
+import archiver from 'archiver';
+import { PDFDocument } from 'pdf-lib';
+import { AppError, toAppError } from '../lib/errors';
+import { loadPdf, parsePageRanges, rangesToIndices, PageRange } from '../lib/pdf';
+
+/**
+ * Split PDF.
+ *
+ * Three modes:
+ *   ranges  - extract selected pages into one PDF
+ *   all     - one PDF per page, delivered as a ZIP
+ *   every-n - fixed-size chunks, delivered as a ZIP
+ *
+ * The previous version created one file per page but the route only ever sent
+ * the first one, so users silently received page 1 alone.
+ */
+
+export type SplitMode = 'ranges' | 'all' | 'every-n';
+
+export interface SplitOptions {
+  mode: SplitMode;
+  /** For 'ranges': "1-3, 7, 10-12" or structured ranges. */
+  pageRanges?: string | PageRange[];
+  /** For 'every-n': pages per output document. */
+  chunkSize?: number;
+}
+
+export interface SplitResult {
+  /** Single PDF, or a ZIP when the split produced multiple documents. */
+  outputPath: string;
+  fileName: string;
+  isArchive: boolean;
+  documentCount: number;
+  pageCount: number;
+}
 
 export class SplitPdfService {
   static async split(
-    pdfPath: string,
+    inputPath: string,
     outputDir: string,
-    pageRanges?: { start: number; end: number }[]
-  ): Promise<string[]> {
+    baseName: string,
+    options: SplitOptions
+  ): Promise<SplitResult> {
     try {
-      const dataBuffer = await fs.readFile(pdfPath);
-      const pdfDoc = await PDFDocument.load(dataBuffer);
-      const totalPages = pdfDoc.getPageCount();
-      
-      const outputFiles: string[] = [];
-      
-      if (pageRanges && pageRanges.length > 0) {
-        // Collect all page indices from all ranges into a single array
-        const pageIndices: number[] = [];
-        
-        for (const range of pageRanges) {
-          // Validate range
-          if (range.start < 1 || range.end > totalPages || range.start > range.end) {
-            throw new Error(`Invalid page range: ${range.start}-${range.end}. PDF has ${totalPages} pages.`);
-          }
-          
-          // Add all pages in this range (convert from 1-based to 0-based indexing)
-          for (let pageNum = range.start; pageNum <= range.end; pageNum++) {
-            const pageIndex = pageNum - 1; // Convert to 0-based
-            if (!pageIndices.includes(pageIndex)) {
-              pageIndices.push(pageIndex);
-            }
-          }
-        }
-        
-        // Sort page indices to maintain order
-        pageIndices.sort((a, b) => a - b);
-        
-        if (pageIndices.length === 0) {
-          throw new Error('No valid pages to extract');
-        }
-        
-        // Create a single PDF with all specified pages
-        const newPdf = await PDFDocument.create();
-        const copiedPages = await newPdf.copyPages(pdfDoc, pageIndices);
-        copiedPages.forEach((page) => newPdf.addPage(page));
-        
-        const pdfBytes = await newPdf.save();
-        const outputPath = path.join(outputDir, 'split_pages.pdf');
-        await fs.writeFile(outputPath, pdfBytes);
-        outputFiles.push(outputPath);
-      } else {
-        // Split into individual pages (if no ranges specified)
-        for (let i = 0; i < totalPages; i++) {
-          const newPdf = await PDFDocument.create();
-          const [page] = await newPdf.copyPages(pdfDoc, [i]);
-          newPdf.addPage(page);
-          const pdfBytes = await newPdf.save();
-          const outputPath = path.join(outputDir, `page_${i + 1}.pdf`);
-          await fs.writeFile(outputPath, pdfBytes);
-          outputFiles.push(outputPath);
-        }
+      const source = await loadPdf(inputPath, { ignoreEncryption: false });
+      const pageCount = source.getPageCount();
+
+      if (pageCount === 0) {
+        throw new AppError('EMPTY_RESULT', 'This PDF has no pages.');
       }
-      
-      return outputFiles;
-    } catch (error: any) {
-      throw new Error(`PDF split failed: ${error.message}`);
+
+      await fs.mkdir(outputDir, { recursive: true });
+      const stem = path.basename(baseName, path.extname(baseName));
+
+      if (options.mode === 'ranges') {
+        return await this.extractRanges(source, outputDir, stem, options, pageCount);
+      }
+
+      if (options.mode === 'every-n') {
+        return await this.splitIntoChunks(source, outputDir, stem, options, pageCount);
+      }
+
+      return await this.splitEveryPage(source, outputDir, stem, pageCount);
+    } catch (error) {
+      throw toAppError(error, 'The PDF could not be split.');
     }
+  }
+
+  private static async extractRanges(
+    source: PDFDocument,
+    outputDir: string,
+    stem: string,
+    options: SplitOptions,
+    pageCount: number
+  ): Promise<SplitResult> {
+    const ranges = parsePageRanges(options.pageRanges, pageCount);
+
+    if (!ranges?.length) {
+      throw new AppError(
+        'INVALID_INPUT',
+        'Select which pages you want to extract.',
+        'For example: 1-3, 7, 10-12'
+      );
+    }
+
+    const indices = rangesToIndices(ranges);
+    const target = await PDFDocument.create();
+    const copied = await target.copyPages(source, indices);
+    copied.forEach((page) => target.addPage(page));
+
+    const fileName = `${stem}_pages.pdf`;
+    const outputPath = path.join(outputDir, fileName);
+    await fs.writeFile(outputPath, await target.save());
+
+    return {
+      outputPath,
+      fileName,
+      isArchive: false,
+      documentCount: 1,
+      pageCount: indices.length,
+    };
+  }
+
+  private static async splitEveryPage(
+    source: PDFDocument,
+    outputDir: string,
+    stem: string,
+    pageCount: number
+  ): Promise<SplitResult> {
+    const pagesDir = path.join(outputDir, 'pages');
+    await fs.mkdir(pagesDir, { recursive: true });
+
+    const width = String(pageCount).length;
+
+    for (let index = 0; index < pageCount; index += 1) {
+      const target = await PDFDocument.create();
+      const [page] = await target.copyPages(source, [index]);
+      target.addPage(page);
+
+      const label = String(index + 1).padStart(width, '0');
+      await fs.writeFile(
+        path.join(pagesDir, `${stem}_page_${label}.pdf`),
+        await target.save()
+      );
+    }
+
+    const fileName = `${stem}_split.zip`;
+    const outputPath = path.join(outputDir, fileName);
+    await zipDirectory(pagesDir, outputPath);
+
+    return {
+      outputPath,
+      fileName,
+      isArchive: true,
+      documentCount: pageCount,
+      pageCount,
+    };
+  }
+
+  private static async splitIntoChunks(
+    source: PDFDocument,
+    outputDir: string,
+    stem: string,
+    options: SplitOptions,
+    pageCount: number
+  ): Promise<SplitResult> {
+    const chunkSize = Math.floor(options.chunkSize ?? 1);
+
+    if (!Number.isFinite(chunkSize) || chunkSize < 1) {
+      throw new AppError('INVALID_INPUT', 'Pages per file must be at least 1.');
+    }
+
+    if (chunkSize >= pageCount) {
+      throw new AppError(
+        'INVALID_INPUT',
+        `This document only has ${pageCount} pages, so splitting every ${chunkSize} pages would produce a single file.`
+      );
+    }
+
+    const chunksDir = path.join(outputDir, 'chunks');
+    await fs.mkdir(chunksDir, { recursive: true });
+
+    let documentCount = 0;
+    for (let start = 0; start < pageCount; start += chunkSize) {
+      const indices = Array.from(
+        { length: Math.min(chunkSize, pageCount - start) },
+        (_, offset) => start + offset
+      );
+
+      const target = await PDFDocument.create();
+      const copied = await target.copyPages(source, indices);
+      copied.forEach((page) => target.addPage(page));
+
+      documentCount += 1;
+      const first = start + 1;
+      const last = start + indices.length;
+      await fs.writeFile(
+        path.join(chunksDir, `${stem}_${first}-${last}.pdf`),
+        await target.save()
+      );
+    }
+
+    const fileName = `${stem}_split.zip`;
+    const outputPath = path.join(outputDir, fileName);
+    await zipDirectory(chunksDir, outputPath);
+
+    return { outputPath, fileName, isArchive: true, documentCount, pageCount };
   }
 }
 
+function zipDirectory(sourceDir: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const output = fsSync.createWriteStream(outputPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => resolve());
+    output.on('error', reject);
+    archive.on('error', reject);
+    archive.on('warning', (warning) => {
+      if (warning.code !== 'ENOENT') reject(warning);
+    });
+
+    archive.pipe(output);
+    archive.directory(sourceDir, false);
+    void archive.finalize();
+  });
+}

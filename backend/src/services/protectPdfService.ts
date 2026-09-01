@@ -1,75 +1,98 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import fs from 'fs/promises';
+import { AppError, toAppError } from '../lib/errors';
+import { loadPdf } from '../lib/pdf';
+import * as qpdf from './engines/qpdf';
 
-const execAsync = promisify(exec);
+/**
+ * Password-protect a PDF with AES-256 encryption.
+ *
+ * Requires qpdf. There is deliberately no JavaScript fallback: pdf-lib cannot
+ * encrypt, and silently returning an unencrypted file for a security feature
+ * would be worse than a clear error.
+ */
+
+export interface ProtectOptions {
+  ownerPassword?: string;
+  allowPrinting?: boolean | 'low';
+  allowModifying?: boolean;
+  allowCopying?: boolean;
+  allowAnnotating?: boolean;
+}
+
+export interface ProtectResult {
+  outputPath: string;
+  encryption: 'AES-256';
+}
+
+const MIN_PASSWORD_LENGTH = 4;
 
 export class ProtectPdfService {
   static async protect(
-    pdfPath: string,
+    inputPath: string,
     outputPath: string,
-    userPassword: string,
-    ownerPassword?: string,
-    permissions?: {
-      printing?: 'lowResolution' | 'highResolution' | false;
-      modifying?: boolean;
-      copying?: boolean;
-      annotating?: boolean;
+    password: string,
+    options: ProtectOptions = {}
+  ): Promise<ProtectResult> {
+    if (!password || password.length < MIN_PASSWORD_LENGTH) {
+      throw new AppError(
+        'INVALID_INPUT',
+        `The password must be at least ${MIN_PASSWORD_LENGTH} characters.`
+      );
     }
-  ): Promise<void> {
-    try {
-      // Try using qpdf command-line tool for encryption
-      // qpdf is a robust tool for PDF manipulation including encryption
-      const finalPassword = ownerPassword || userPassword;
-      
-      // Escape passwords for shell command
-      const escapeShell = (str: string) => str.replace(/'/g, "'\\''").replace(/(["$`\\])/g, '\\$1');
-      const escapedUserPassword = escapeShell(userPassword);
-      const escapedOwnerPassword = escapeShell(finalPassword);
-      
-      // Build qpdf command with permissions
-      let qpdfCommand = `qpdf --encrypt "${escapedUserPassword}" "${escapedOwnerPassword}" 256`;
-      
-      // Add permission restrictions
-      // qpdf permission flags: print, modify, extract, annotate
-      // We invert the logic: if permission is false, we restrict it
-      if (permissions?.printing === false) {
-        qpdfCommand += ' --print=n';
-      }
-      if (permissions?.modifying === false) {
-        qpdfCommand += ' --modify=n';
-      }
-      if (permissions?.copying === false) {
-        qpdfCommand += ' --extract=n';
-      }
-      if (permissions?.annotating === false) {
-        qpdfCommand += ' --annotate=n';
-      }
-      
-      qpdfCommand += ` -- "${pdfPath}" "${outputPath}"`;
 
-      try {
-        await execAsync(qpdfCommand);
-      } catch (qpdfError: any) {
-        // Check if qpdf is not installed
-        if (qpdfError.message.includes('qpdf') && qpdfError.message.includes('not found')) {
-          throw new Error(
-            'PDF password protection requires qpdf to be installed on the server. ' +
-            'Please install qpdf: https://qpdf.sourceforge.io/ ' +
-            'On Windows: choco install qpdf or download from the website. ' +
-            'On Linux: sudo apt-get install qpdf or sudo yum install qpdf. ' +
-            'On macOS: brew install qpdf'
-          );
-        }
-        // If qpdf command failed for another reason, throw the error
-        throw new Error(`qpdf encryption failed: ${qpdfError.message}`);
-      }
-    } catch (error: any) {
-      // If it's our custom error, rethrow it
-      if (error.message.includes('qpdf') || error.message.includes('password protection')) {
-        throw error;
-      }
-      throw new Error(`PDF protection failed: ${error.message}`);
+    if (!(await qpdf.isAvailable())) {
+      throw new AppError(
+        'ENGINE_UNAVAILABLE',
+        'PDF password protection is not available in this environment.',
+        'This feature runs on the deployed server, which has the encryption engine installed.'
+      );
     }
+
+    await loadPdf(inputPath, { ignoreEncryption: false });
+
+    try {
+      await qpdf.encrypt(
+        inputPath,
+        outputPath,
+        password,
+        options.ownerPassword || password,
+        {
+          printing: options.allowPrinting ?? true,
+          modifying: options.allowModifying ?? false,
+          copying: options.allowCopying ?? false,
+          annotating: options.allowAnnotating ?? false,
+        }
+      );
+    } catch (error) {
+      throw toAppError(error, 'The PDF could not be password-protected.');
+    }
+
+    const stat = await fs.stat(outputPath).catch(() => null);
+    if (!stat || stat.size === 0) {
+      throw new AppError('PROCESSING_FAILED', 'Encryption produced an empty file.');
+    }
+
+    return { outputPath, encryption: 'AES-256' };
+  }
+
+  /** Removes a known password from a PDF. */
+  static async unlock(
+    inputPath: string,
+    outputPath: string,
+    password: string
+  ): Promise<{ outputPath: string }> {
+    if (!(await qpdf.isAvailable())) {
+      throw new AppError(
+        'ENGINE_UNAVAILABLE',
+        'PDF unlocking is not available in this environment.'
+      );
+    }
+
+    if (!password) {
+      throw new AppError('INVALID_INPUT', 'Enter the PDF password.');
+    }
+
+    await qpdf.decrypt(inputPath, outputPath, password);
+    return { outputPath };
   }
 }
-

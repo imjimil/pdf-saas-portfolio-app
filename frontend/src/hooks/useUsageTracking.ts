@@ -1,42 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
-const USAGE_KEY = 'pdf_saas_usage_count';
-const MAX_GUEST_USES = 3;
+/**
+ * Counts how many conversions a signed-out visitor has run, so the app can
+ * suggest an account after a few. It is a nudge, not a paywall — the tools keep
+ * working either way.
+ */
 
-export const useUsageTracking = () => {
-  const [usageCount, setUsageCount] = useState(0);
-  const [showPrompt, setShowPrompt] = useState(false);
+const STORAGE_KEY = 'guest_conversions';
+const SUGGEST_AFTER = 3;
+
+export function useUsageTracking() {
+  const { isAuthenticated } = useAuth();
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const count = parseInt(localStorage.getItem(USAGE_KEY) || '0', 10);
-    setUsageCount(count);
-    if (count >= MAX_GUEST_USES) {
-      setShowPrompt(true);
-    }
+    setCount(Number(localStorage.getItem(STORAGE_KEY) ?? 0));
   }, []);
 
-  const incrementUsage = () => {
-    const newCount = usageCount + 1;
-    setUsageCount(newCount);
-    localStorage.setItem(USAGE_KEY, newCount.toString());
-    
-    if (newCount >= MAX_GUEST_USES) {
-      setShowPrompt(true);
-    }
-  };
+  const incrementUsage = useCallback(() => {
+    if (isAuthenticated) return;
+    setCount((current) => {
+      const next = current + 1;
+      localStorage.setItem(STORAGE_KEY, String(next));
+      return next;
+    });
+  }, [isAuthenticated]);
 
-  const resetUsage = () => {
-    setUsageCount(0);
-    setShowPrompt(false);
-    localStorage.removeItem(USAGE_KEY);
-  };
+  const resetUsage = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setCount(0);
+  }, []);
 
   return {
-    usageCount,
-    showPrompt,
+    count,
     incrementUsage,
     resetUsage,
-    maxGuestUses: MAX_GUEST_USES,
+    shouldSuggestAccount: !isAuthenticated && count >= SUGGEST_AFTER,
   };
-};
-
+}

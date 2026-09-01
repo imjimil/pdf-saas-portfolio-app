@@ -1,206 +1,192 @@
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
+import { ShieldCheck } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
 
-const PrivacyPolicy = () => {
+const LAST_UPDATED = '31 August 2026';
+
+export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors">
-      <Navigation showAuth={true} />
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <Link
-            to="/"
-            className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-green-primary dark:hover:text-green-light transition mb-6"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Home
-          </Link>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Privacy Policy
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+    <AppShell>
+      <article className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-14">
+        <header className="animate-fade-up">
+          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400">
+            Privacy
           </p>
+          <h1 className="mt-2 text-display-xs sm:text-display-sm">Privacy policy</h1>
+          <p className="mt-3 text-[14px] text-muted">Last updated: {LAST_UPDATED}</p>
+        </header>
+
+        <div className="card mt-8 p-5 sm:p-6">
+          <h2 className="flex items-center gap-2 text-[16px] font-semibold">
+            <ShieldCheck size={18} aria-hidden className="text-brand-600 dark:text-brand-400" />
+            The short version
+          </h2>
+          <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-ink-soft dark:text-sand-300">
+            <li>Your files are processed on our server and deleted immediately afterwards.</li>
+            <li>We never read, keep, share or sell the contents of your documents.</li>
+            <li>An account stores your email, an optional name, and a list of tools you used.</li>
+            <li>Passwords are stored hashed. Signing in with Google is optional.</li>
+            <li>You can delete your account, and everything attached to it, at any time.</li>
+          </ul>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 md:p-8 border border-gray-200 dark:border-gray-700 space-y-8">
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">1. Introduction</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              Welcome to Mypdftools ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our PDF processing services.
+        <div className="mt-10 space-y-9">
+          <Section title="Files you upload">
+            <p>
+              When you use a tool, your file is uploaded over an encrypted connection, converted on
+              our server, and streamed back to you as a download. The uploaded file and the
+              converted result are then deleted from disk. Nothing is copied to long-term storage,
+              backed up, or kept for analysis.
             </p>
-          </section>
+            <p>
+              This has a practical consequence worth stating plainly: there is no way to fetch a
+              converted file again later. If you need it a second time, run the original through
+              the tool again from{' '}
+              <TextLink to="/tools">the tool catalogue</TextLink>.
+            </p>
+            <p>
+              We do not open, index or inspect the contents of your documents beyond what the
+              conversion itself requires. Password-protected PDFs are unlocked only with the
+              password you supply, and that password is used for the single operation and never
+              written down.
+            </p>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">2. Information We Collect</h2>
-            
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 mt-6">2.1 Information You Provide</h3>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>Account Information:</strong> When you create an account, we collect your email address, name (optional), and password (hashed and encrypted).</li>
-              <li><strong>File Uploads:</strong> When you upload PDF files or images for processing, we temporarily store these files on our servers during processing.</li>
-              <li><strong>Usage Data:</strong> For registered users, we track your file processing history, including file names, operation types, and timestamps.</li>
+          <Section title="Using the tools without an account">
+            <p>
+              Every tool works while signed out. In that case we do not attribute the conversion to
+              anyone — no record is created, because there is no account to attach it to.
+            </p>
+          </Section>
+
+          <Section title="Account information">
+            <p>If you create an account, we store:</p>
+            <ul className="ml-5 list-disc space-y-1.5">
+              <li>Your email address, which identifies the account and is used to sign you in.</li>
+              <li>A display name, only if you choose to set one. It is optional and editable.</li>
+              <li>The date the account was created.</li>
+              <li>
+                A hashed version of your password. Hashing is one-way: we cannot read your
+                password, and neither can anyone who obtains the database.
+              </li>
             </ul>
+            <p>
+              We do not ask for a phone number, a billing address or any payment details, because
+              the service is free and there is nothing to bill.
+            </p>
+          </Section>
 
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 mt-6">2.2 Automatically Collected Information</h3>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>Usage Analytics:</strong> We collect anonymous usage statistics to improve our services, including operation types and processing times.</li>
-              <li><strong>Technical Data:</strong> We may collect IP addresses, browser type, device information, and other technical data for security and service improvement purposes.</li>
+          <Section title="Signing in with Google">
+            <p>
+              Google sign-in is optional and exists only to save you from managing another
+              password. If you use it, Google tells us your email address and your public profile
+              name; we store those two things and a Google account identifier so we can recognise
+              you next time. We receive no access to your Google Drive, contacts or anything else,
+              and we never post on your behalf.
+            </p>
+            <p>
+              An account created this way has no password of its own, which is why the password
+              section is hidden on the account page for those users.
+            </p>
+          </Section>
+
+          <Section title="Your activity log">
+            <p>
+              For signed-in users we record one row per conversion: which tool was used, the name
+              and size of the file you started with, the name given to the result, and the time it
+              happened. This is what fills the activity page. It is metadata about the job, not the
+              document — the file itself is already gone by the time you read it.
+            </p>
+            <p>
+              You can delete individual entries from the activity page, or remove the whole log by
+              deleting your account.
+            </p>
+          </Section>
+
+          <Section title="What is stored in your browser">
+            <p>
+              We do not use advertising or tracking cookies. Your browser's local storage holds two
+              things: a sign-in token, so you stay signed in between visits, and your light or dark
+              mode preference. Signing out removes the token.
+            </p>
+          </Section>
+
+          <Section title="Service providers">
+            <p>
+              The application runs on a commercial hosting platform and stores account data in a
+              managed database. Those providers process data on our behalf in order to run the
+              service and are not permitted to use it for anything else. Aside from Google, when
+              you choose Google sign-in, we do not share your information with third parties.
+            </p>
+          </Section>
+
+          <Section title="What we do not do">
+            <ul className="ml-5 list-disc space-y-1.5">
+              <li>We do not sell or rent your data to anyone, for any purpose.</li>
+              <li>We do not show ads or embed advertising trackers.</li>
+              <li>We do not use your documents to train machine learning models.</li>
+              <li>We do not email you marketing you did not ask for.</li>
             </ul>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">3. How We Use Your Information</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              We use the information we collect for the following purposes:
+          <Section title="Your choices">
+            <p>
+              You can change your display name, change your password and delete your account from
+              the account page. Deleting your account removes your email, your name and your entire
+              activity log from our database. The action is immediate and cannot be undone.
             </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li>To provide, maintain, and improve our PDF processing services</li>
-              <li>To process your file uploads and deliver processed files</li>
-              <li>To maintain your account and provide file history for registered users</li>
-              <li>To send you service-related notifications (if you opt-in)</li>
-              <li>To detect, prevent, and address technical issues and security threats</li>
-              <li>To comply with legal obligations and protect our rights</li>
-            </ul>
-          </section>
+            <p>
+              If you would like a copy of what we hold about you, ask and we will send it — for most
+              accounts it is a short list.
+            </p>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">4. File Storage and Deletion</h2>
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
-              <p className="text-gray-800 dark:text-gray-200 font-semibold mb-2">🔒 Our Commitment to Your Privacy:</p>
-              <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
-                <li><strong>Guest Users:</strong> Files are automatically deleted immediately after processing and download.</li>
-                <li><strong>Registered Users:</strong> Files are stored securely in your account for your convenience and can be deleted at any time.</li>
-                <li><strong>Automatic Cleanup:</strong> We implement automatic cleanup processes to remove old files and temporary data.</li>
-                <li><strong>No Permanent Storage:</strong> We do not permanently store your files unless you explicitly choose to save them in your account.</li>
-              </ul>
-            </div>
-          </section>
+          <Section title="Children">
+            <p>
+              The service is not directed at children under 13, and we do not knowingly create
+              accounts for them. If you believe a child has created one, contact us and we will
+              remove it.
+            </p>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">5. Data Security</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              We implement industry-standard security measures to protect your information:
+          <Section title="Changes to this policy">
+            <p>
+              If the way we handle data changes, this page changes with it and the date at the top
+              is updated. We will not quietly start keeping files; that promise is the point of the
+              product.
             </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>SSL Encryption:</strong> All data transmission is encrypted using SSL/TLS protocols</li>
-              <li><strong>Secure Servers:</strong> Files are processed on secure, isolated servers</li>
-              <li><strong>Password Protection:</strong> User passwords are hashed using bcrypt and never stored in plain text</li>
-              <li><strong>Access Controls:</strong> Strict access controls limit who can access your data</li>
-              <li><strong>Regular Security Audits:</strong> We conduct regular security assessments and updates</li>
-            </ul>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              However, no method of transmission over the Internet or electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your information, we cannot guarantee absolute security.
-            </p>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">6. Data Sharing and Disclosure</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              We do not sell, trade, or rent your personal information to third parties. We may share your information only in the following circumstances:
+          <Section title="Contact">
+            <p>
+              Questions about any of this are welcome. Use the{' '}
+              <TextLink to="/contact">contact page</TextLink> and we will get back to you.
             </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>Service Providers:</strong> We may share data with trusted third-party service providers who assist in operating our service (e.g., cloud hosting providers), subject to strict confidentiality agreements</li>
-              <li><strong>Legal Requirements:</strong> We may disclose information if required by law or in response to valid legal requests</li>
-              <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale, your information may be transferred as part of the transaction</li>
-              <li><strong>With Your Consent:</strong> We may share information with your explicit consent</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">7. Third-Party Services</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              Our service may integrate with third-party services:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>Google OAuth:</strong> If you choose to sign in with Google, your authentication is handled by Google according to their privacy policy</li>
-              <li><strong>Hosting Services:</strong> We use cloud hosting providers to store and process files</li>
-            </ul>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              We encourage you to review the privacy policies of these third-party services.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">8. Cookies and Tracking</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              We use minimal cookies and tracking technologies:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>Session Cookies:</strong> Essential for maintaining your login session and authentication</li>
-              <li><strong>Preference Cookies:</strong> To remember your dark mode preference</li>
-              <li><strong>No Advertising Cookies:</strong> We do not use cookies for advertising or tracking across websites</li>
-            </ul>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              You can control cookies through your browser settings, though this may affect some functionality.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">9. Your Rights and Choices</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              You have the following rights regarding your personal information:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
-              <li><strong>Access:</strong> Request access to your personal data and file history</li>
-              <li><strong>Correction:</strong> Update or correct your account information</li>
-              <li><strong>Deletion:</strong> Delete your account and all associated data at any time</li>
-              <li><strong>File Management:</strong> Delete individual files from your history</li>
-              <li><strong>Data Export:</strong> Request a copy of your data</li>
-              <li><strong>Opt-Out:</strong> Unsubscribe from non-essential communications</li>
-            </ul>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              To exercise these rights, please contact us using the information provided in the "Contact Us" section below.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">10. Children's Privacy</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              Our service is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe we have collected information from a child under 13, please contact us immediately, and we will take steps to delete such information.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">11. International Data Transfers</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that differ from those in your country. By using our service, you consent to the transfer of your information to these countries.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">12. Changes to This Privacy Policy</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date. We encourage you to review this Privacy Policy periodically for any changes. Changes are effective when posted on this page.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">13. Contact Us</h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
-            </p>
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Email:</strong> privacy@mypdftools.com
-              </p>
-              <p className="text-gray-700 dark:text-gray-300 mt-2">
-                <strong>Website:</strong> <Link to="/" className="text-green-primary dark:text-green-light hover:underline">www.mypdftools.com</Link>
-              </p>
-            </div>
-          </section>
-
-          <section className="pt-6 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              By using Mypdftools, you acknowledge that you have read and understood this Privacy Policy and agree to the collection and use of information as described herein.
-            </p>
-          </section>
+          </Section>
         </div>
-      </div>
-    </div>
+      </article>
+    </AppShell>
   );
-};
+}
 
-export default PrivacyPolicy;
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="text-[19px] font-semibold">{title}</h2>
+      <div className="mt-2.5 space-y-3 text-[15.5px] leading-relaxed text-ink-soft text-pretty dark:text-sand-300">
+        {children}
+      </div>
+    </section>
+  );
+}
 
+function TextLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+    >
+      {children}
+    </Link>
+  );
+}

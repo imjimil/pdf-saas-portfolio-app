@@ -1,153 +1,88 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+
 import Landing from './pages/Landing';
+import Tools from './pages/Tools';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Tools from './pages/Tools';
-import UserDashboard from './pages/UserDashboard';
-import Profile from './pages/Profile';
-import WatermarkPDF from './pages/WatermarkPDF';
-import ProtectPDF from './pages/ProtectPDF';
-import SplitPDF from './pages/SplitPDF';
-import MergePDF from './pages/MergePDF';
-import PdfToWord from './pages/PdfToWord';
-import WordToPdf from './pages/WordToPdf';
-import ImageToPdf from './pages/ImageToPdf';
-import PdfToText from './pages/PdfToText';
-import PdfToEpub from './pages/PdfToEpub';
-import PdfOcr from './pages/PdfOcr';
-import CompressPdf from './pages/CompressPdf';
 import AuthCallback from './pages/AuthCallback';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import Contact from './pages/Contact';
-import ProtectedRoute from './components/ProtectedRoute';
+import RequireAuth from './components/RequireAuth';
 
-function App() {
+// Tool screens are split out so the landing page ships the smallest bundle.
+const PdfToWord = lazy(() => import('./pages/PdfToWord'));
+const WordToPdf = lazy(() => import('./pages/WordToPdf'));
+const ImageToPdf = lazy(() => import('./pages/ImageToPdf'));
+const PdfToText = lazy(() => import('./pages/PdfToText'));
+const PdfToEpub = lazy(() => import('./pages/PdfToEpub'));
+const MergePDF = lazy(() => import('./pages/MergePDF'));
+const SplitPDF = lazy(() => import('./pages/SplitPDF'));
+const CompressPdf = lazy(() => import('./pages/CompressPdf'));
+const PdfOcr = lazy(() => import('./pages/PdfOcr'));
+const WatermarkPDF = lazy(() => import('./pages/WatermarkPDF'));
+const ProtectPDF = lazy(() => import('./pages/ProtectPDF'));
+const UnlockPDF = lazy(() => import('./pages/UnlockPDF'));
+
+const UserDashboard = lazy(() => import('./pages/UserDashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Contact = lazy(() => import('./pages/Contact'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+
+function RouteFallback() {
   return (
-    <Router>
+    <div className="grid min-h-[60vh] place-items-center" role="status" aria-label="Loading">
+      <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/tools" element={<Tools />} />
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
+
         <Route path="/contact" element={<Contact />} />
-        <Route
-          path="/tools"
-          element={
-            <ProtectedRoute>
-              <Tools />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pdf-to-word"
-          element={
-            <ProtectedRoute>
-              <PdfToWord />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/word-to-pdf"
-          element={
-            <ProtectedRoute>
-              <WordToPdf />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/image-to-pdf"
-          element={
-            <ProtectedRoute>
-              <ImageToPdf />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pdf-to-text"
-          element={
-            <ProtectedRoute>
-              <PdfToText />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pdf-to-epub"
-          element={
-            <ProtectedRoute>
-              <PdfToEpub />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pdf-ocr"
-          element={
-            <ProtectedRoute>
-              <PdfOcr />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/compress-pdf"
-          element={
-            <ProtectedRoute>
-              <CompressPdf />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+
+        {/* Tools are open to everyone; an account only adds activity history. */}
+        <Route path="/pdf-to-word" element={<PdfToWord />} />
+        <Route path="/word-to-pdf" element={<WordToPdf />} />
+        <Route path="/image-to-pdf" element={<ImageToPdf />} />
+        <Route path="/pdf-to-text" element={<PdfToText />} />
+        <Route path="/pdf-to-epub" element={<PdfToEpub />} />
+        <Route path="/merge-pdf" element={<MergePDF />} />
+        <Route path="/split-pdf" element={<SplitPDF />} />
+        <Route path="/compress-pdf" element={<CompressPdf />} />
+        <Route path="/pdf-ocr" element={<PdfOcr />} />
+        <Route path="/watermark-pdf" element={<WatermarkPDF />} />
+        <Route path="/protect-pdf" element={<ProtectPDF />} />
+        <Route path="/unlock-pdf" element={<UnlockPDF />} />
+
         <Route
           path="/my-dashboard"
           element={
-            <ProtectedRoute>
+            <RequireAuth>
               <UserDashboard />
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <RequireAuth>
               <Profile />
-            </ProtectedRoute>
+            </RequireAuth>
           }
         />
-        <Route
-          path="/watermark-pdf"
-          element={
-            <ProtectedRoute>
-              <WatermarkPDF />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/protect-pdf"
-          element={
-            <ProtectedRoute>
-              <ProtectPDF />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/split-pdf"
-          element={
-            <ProtectedRoute>
-              <SplitPDF />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/merge-pdf"
-          element={
-            <ProtectedRoute>
-              <MergePDF />
-            </ProtectedRoute>
-          }
-        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </Suspense>
   );
 }
-
-export default App;
-

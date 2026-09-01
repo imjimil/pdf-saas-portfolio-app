@@ -1,28 +1,21 @@
-import Navigation from '../components/Navigation';
-import Hero from '../components/Landing/Hero';
-import Features from '../components/Landing/Features';
-import Security from '../components/Landing/Security';
-import Benefits from '../components/Landing/Benefits';
-import HowItWorks from '../components/Landing/HowItWorks';
-import Footer from '../components/Landing/Footer';
-import { useAuth } from '../hooks/useAuth';
+import { AppShell } from '../components/AppShell';
+import { Footer } from '../components/Footer';
+import { Hero } from '../components/landing/Hero';
+import { ToolGrid } from '../components/landing/ToolGrid';
+import { Steps } from '../components/landing/Steps';
+import { Privacy } from '../components/landing/Privacy';
+import { FAQ } from '../components/landing/FAQ';
+import { CTA } from '../components/landing/CTA';
 
-const Landing = () => {
-  const { isAuthenticated } = useAuth();
-
+export default function Landing() {
   return (
-    <div className="min-h-screen bg-cream-light dark:bg-gray-900 transition-colors w-full overflow-x-hidden">
-      <Navigation showAuth={true} />
-
-      <Hero isAuthenticated={isAuthenticated} />
-      <Features />
-      <Security />
-      <Benefits />
-      <HowItWorks />
-      <Footer />
-    </div>
+    <AppShell footer={<Footer />}>
+      <Hero />
+      <ToolGrid />
+      <Steps />
+      <Privacy />
+      <FAQ />
+      <CTA />
+    </AppShell>
   );
-};
-
-export default Landing;
-
+}

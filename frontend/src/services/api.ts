@@ -1,327 +1,299 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosProgressEvent } from 'axios';
 
-// Use proxy in development (Vite handles /api), or full URL if specified
-// @ts-ignore - Vite env types
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  // If FormData, let browser set Content-Type with boundary
-  if (config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Let the browser set the multipart boundary itself.
+  if (config.data instanceof FormData) delete config.headers['Content-Type'];
   return config;
 });
 
-// Handle auth errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Only redirect to login if we're not already on login/register pages
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+  (error: AxiosError) => {
+    const path = window.location.pathname;
+    const onAuthPage = path.includes('/login') || path.includes('/register');
+
+    if (error.response?.status === 401 && !onAuthPage) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-export const authAPI = {
-  register: async (email: string, password: string) => {
-    const response = await api.post('/auth/register', { email, password });
-    return response.data;
+/** A failure with a message written for the person using the app. */
+export class ApiError extends Error {
+  readonly hint?: string;
+  readonly code?: string;
+  readonly status?: number;
+
+  constructor(message: string, options: { hint?: string; code?: string; status?: number } = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.hint = options.hint;
+    this.code = options.code;
+    this.status = options.status;
+  }
+}
+
+/**
+ * Normalises every failure mode into an ApiError.
+ *
+ * File endpoints respond with a binary blob on success, so an error arriving on
+ * one of those requests must be read out of the blob before it can be shown.
+ */
+async function toApiError(error: unknown): Promise<ApiError> {
+  if (!axios.isAxiosError(error)) {
+    return new ApiError(
+      error instanceof Error ? error.message : 'Something went wrong.'
+    );
+  }
+
+  if (error.code === 'ERR_NETWORK') {
+    return new ApiError('Could not reach the server.', {
+      hint: 'Check your connection and try again.',
+    });
+  }
+
+  if (error.code === 'ECONNABORTED') {
+    return new ApiError('The request timed out.', {
+      hint: 'Large files can take a while — try again or use a smaller file.',
+    });
+  }
+
+  const status = error.response?.status;
+  let data: any = error.response?.data;
+
+  if (data instanceof Blob) {
+    try {
+      data = JSON.parse(await data.text());
+    } catch {
+      data = null;
+    }
+  }
+
+  if (data?.message) {
+    return new ApiError(data.message, { hint: data.hint, code: data.code, status });
+  }
+
+  if (status === 413) {
+    return new ApiError('That file is too large.', {
+      hint: 'The limit is 50 MB. Try compressing it first.',
+      status,
+    });
+  }
+
+  if (status === 429) {
+    return new ApiError('Too many requests.', {
+      hint: 'Please wait a minute and try again.',
+      status,
+    });
+  }
+
+  return new ApiError('Something went wrong while processing your file.', { status });
+}
+
+export interface FileResult {
+  blob: Blob;
+  fileName: string;
+  meta: Record<string, string | number | boolean>;
+}
+
+export type ProgressHandler = (percent: number) => void;
+
+/** Posts multipart data and returns the resulting file plus its metadata. */
+async function postForFile(
+  endpoint: string,
+  form: FormData,
+  onProgress?: ProgressHandler
+): Promise<FileResult> {
+  try {
+    const response = await api.post(endpoint, form, {
+      responseType: 'blob',
+      timeout: 5 * 60 * 1000,
+      onUploadProgress: (event: AxiosProgressEvent) => {
+        if (!onProgress || !event.total) return;
+        // Upload is the first 90%; the rest covers server-side processing.
+        onProgress(Math.round((event.loaded / event.total) * 90));
+      },
+    });
+
+    onProgress?.(100);
+
+    // An error can still arrive as a JSON blob with a 2xx-shaped request.
+    const contentType = response.headers['content-type'] ?? '';
+    if (contentType.includes('application/json')) {
+      const payload = JSON.parse(await (response.data as Blob).text());
+      throw new ApiError(payload.message ?? 'Conversion failed.', {
+        hint: payload.hint,
+        code: payload.code,
+      });
+    }
+
+    return {
+      blob: response.data as Blob,
+      fileName: filenameFromDisposition(response.headers['content-disposition']),
+      meta: parseMeta(response.headers['x-result-meta']),
+    };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw await toApiError(error);
+  }
+}
+
+function parseMeta(header?: string): Record<string, string | number | boolean> {
+  if (!header) return {};
+  try {
+    return JSON.parse(decodeURIComponent(header));
+  } catch {
+    return {};
+  }
+}
+
+function filenameFromDisposition(header?: string): string {
+  if (!header) return 'download';
+  const utf8 = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) return decodeURIComponent(utf8[1]);
+  const plain = header.match(/filename="?([^";]+)"?/i);
+  return plain ? plain[1] : 'download';
+}
+
+const appendFields = (form: FormData, fields: Record<string, unknown> = {}) => {
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined && value !== null && value !== '') {
+      form.append(key, String(value));
+    }
+  }
+};
+
+// --- Tools -------------------------------------------------------------------
+
+export const pdfAPI = {
+  /** Which conversions the server can currently perform at full fidelity. */
+  capabilities: async () => (await api.get('/pdf/capabilities')).data,
+
+  run: (
+    endpoint: string,
+    files: File | File[],
+    fields: Record<string, unknown> = {},
+    onProgress?: ProgressHandler
+  ): Promise<FileResult> => {
+    const form = new FormData();
+    const list = Array.isArray(files) ? files : [files];
+
+    if (Array.isArray(files)) {
+      list.forEach((file) => form.append('files', file));
+    } else {
+      form.append('file', list[0]);
+    }
+
+    appendFields(form, fields);
+    return postForFile(endpoint, form, onProgress);
   },
-  login: async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
-    return response.data;
-  },
-  getProfile: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
-  },
-  updateProfile: async (name: string) => {
-    const response = await api.put('/auth/profile', { name });
-    return response.data;
-  },
-  changePassword: async (currentPassword: string, newPassword: string) => {
-    const response = await api.put('/auth/password', { currentPassword, newPassword });
-    return response.data;
-  },
-  deleteAccount: async () => {
-    const response = await api.delete('/auth/account');
-    return response.data;
+
+  ocrText: async (
+    file: File,
+    fields: Record<string, unknown> = {},
+    onProgress?: ProgressHandler
+  ) => {
+    const form = new FormData();
+    form.append('file', file);
+    appendFields(form, { ...fields, createSearchablePdf: false });
+
+    try {
+      const response = await api.post('/pdf/ocr', form, {
+        timeout: 5 * 60 * 1000,
+        onUploadProgress: (event: AxiosProgressEvent) => {
+          if (onProgress && event.total) {
+            onProgress(Math.round((event.loaded / event.total) * 90));
+          }
+        },
+      });
+      onProgress?.(100);
+      return response.data as {
+        type: 'text';
+        text: string;
+        fileName: string;
+        characterCount: number;
+        wordCount: number;
+        source: string;
+      };
+    } catch (error) {
+      throw await toApiError(error);
+    }
   },
 };
 
-export const pdfAPI = {
-  toWord: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/pdf/to-word', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  wordToPdf: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
+// --- Account -----------------------------------------------------------------
+
+export const authAPI = {
+  register: async (email: string, password: string) => {
     try {
-      const response = await api.post('/pdf/word-to-pdf', formData, {
-        responseType: 'blob',
-      });
-      // Check if response is actually an error JSON blob
-      if (response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.message || 'Failed to convert Word to PDF');
-      }
-      return response.data;
-    } catch (error: any) {
-      // If it's a blob error response, try to parse it
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.message || 'Failed to convert Word to PDF');
-        } catch {
-          throw new Error('Failed to convert Word to PDF');
-        }
-      }
-      throw error;
+      return (await api.post('/auth/register', { email, password })).data;
+    } catch (error) {
+      throw await toApiError(error);
     }
   },
-  imageToPdf: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/pdf/image-to-pdf', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  split: async (file: File, pageRanges?: { start: number; end: number }[]) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (pageRanges) {
-      formData.append('pageRanges', JSON.stringify(pageRanges));
-    }
-    const response = await api.post('/pdf/split', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  toTxt: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/pdf/to-txt', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  toEpub: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/pdf/to-epub', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  ocr: async (file: File, createSearchablePdf: boolean = false) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('createSearchablePdf', createSearchablePdf.toString());
-    const response = await api.post('/pdf/ocr', formData);
-    return response.data; // Returns { type: 'text' | 'searchablePdf', text, fileName, fileSize, characterCount, wordCount, searchablePdfUrl? }
-  },
-  merge: async (files: File[]) => {
-    const formData = new FormData();
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
+  login: async (email: string, password: string) => {
     try {
-      const response = await api.post('/pdf/merge', formData, {
-        responseType: 'blob',
-      });
-      // Check if response is actually an error JSON blob
-      if (response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.message || 'Failed to merge PDFs');
-      }
-      return response.data;
-    } catch (error: any) {
-      // If it's a blob error response, try to parse it
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.message || 'Failed to merge PDFs');
-        } catch {
-          throw new Error('Failed to merge PDFs');
-        }
-      }
-      throw error;
+      return (await api.post('/auth/login', { email, password })).data;
+    } catch (error) {
+      throw await toApiError(error);
     }
   },
-  compress: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/pdf/compress', formData, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  watermark: async (file: File, watermarkText: string, options?: {
-    position?: string;
-    opacity?: number;
-    fontSize?: number;
-    rotation?: number;
-  }) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('watermarkText', watermarkText);
-    if (options?.position) formData.append('position', options.position);
-    if (options?.opacity !== undefined) formData.append('opacity', options.opacity.toString());
-    if (options?.fontSize) formData.append('fontSize', options.fontSize.toString());
-    if (options?.rotation !== undefined) formData.append('rotation', options.rotation.toString());
+  getProfile: async () => (await api.get('/auth/me')).data,
+  updateProfile: async (name: string) => (await api.put('/auth/profile', { name })).data,
+  changePassword: async (currentPassword: string, newPassword: string) => {
     try {
-      const response = await api.post('/pdf/watermark', formData, {
-        responseType: 'blob',
-      });
-      // Check if response is actually an error JSON blob
-      if (response.data.type && response.data.type.includes('application/json')) {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.message || 'Failed to watermark PDF');
-      }
-      return response.data;
-    } catch (error: any) {
-      // If it's a blob error response, try to parse it
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.message || 'Failed to watermark PDF');
-        } catch (parseError) {
-          // If parsing fails, check status code for more info
-          const status = error.response?.status;
-          const statusText = error.response?.statusText;
-          throw new Error(`Failed to watermark PDF (${status} ${statusText})`);
-        }
-      }
-      // If it's a regular error response with data
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw error;
+      return (await api.put('/auth/password', { currentPassword, newPassword })).data;
+    } catch (error) {
+      throw await toApiError(error);
     }
   },
-  protect: async (file: File, password: string, options?: {
-    ownerPassword?: string;
-    allowPrinting?: string;
-    allowModifying?: string;
-    allowCopying?: string;
-    allowAnnotating?: string;
-  }) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('password', password);
-    if (options?.ownerPassword) formData.append('ownerPassword', options.ownerPassword);
-    if (options?.allowPrinting) formData.append('allowPrinting', options.allowPrinting);
-    if (options?.allowModifying) formData.append('allowModifying', options.allowModifying);
-    if (options?.allowCopying) formData.append('allowCopying', options.allowCopying);
-    if (options?.allowAnnotating) formData.append('allowAnnotating', options.allowAnnotating);
-    try {
-      const response = await api.post('/pdf/protect', formData, {
-        responseType: 'blob',
-      });
-      // Check if response is actually an error JSON blob
-      if (response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.message || 'Failed to protect PDF');
-      }
-      return response.data;
-    } catch (error: any) {
-      // If it's a blob error response, try to parse it
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.message || 'Failed to protect PDF');
-        } catch {
-          throw new Error('Failed to protect PDF');
-        }
-      }
-      throw error;
-    }
-  },
+  deleteAccount: async () => (await api.delete('/auth/account')).data,
 };
 
 export const fileAPI = {
-  getHistory: async (page: number = 1, limit: number = 20, filters?: {
-    operation?: string;
-    startDate?: string;
-    endDate?: string;
-  }) => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    });
-    
-    if (filters?.operation) {
-      params.append('operation', filters.operation);
+  getHistory: async (
+    page = 1,
+    limit = 20,
+    filters: { operation?: string; startDate?: string; endDate?: string } = {}
+  ) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) params.append(key, value);
     }
-    if (filters?.startDate) {
-      params.append('startDate', filters.startDate);
-    }
-    if (filters?.endDate) {
-      params.append('endDate', filters.endDate);
-    }
-    
-    const response = await api.get(`/files/history?${params.toString()}`);
-    return response.data;
+    return (await api.get(`/files/history?${params}`)).data;
   },
-  
-  getFile: async (id: string) => {
-    const response = await api.get(`/files/${id}`);
-    return response.data;
-  },
-  
-  deleteFile: async (id: string) => {
-    const response = await api.delete(`/files/${id}`);
-    return response.data;
-  },
-  
-  downloadFile: async (id: string) => {
-    const response = await api.get(`/files/${id}/download`, {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
+  deleteFile: async (id: string) => (await api.delete(`/files/${id}`)).data,
 };
 
 export const analyticsAPI = {
-  getUsage: async (days: number = 30) => {
-    const response = await api.get(`/analytics/usage?days=${days}`);
-    return response.data;
-  },
-  getOperations: async (days: number = 30) => {
-    const response = await api.get(`/analytics/operations?days=${days}`);
-    return response.data;
-  },
+  getUsage: async (days = 30) => (await api.get(`/analytics/usage?days=${days}`)).data,
+  getOperations: async (days = 30) =>
+    (await api.get(`/analytics/operations?days=${days}`)).data,
 };
 
-export default api;
+/** Triggers a browser download for a blob returned by a tool. */
+export function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoking immediately can cancel the download in Safari.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
+export default api;
