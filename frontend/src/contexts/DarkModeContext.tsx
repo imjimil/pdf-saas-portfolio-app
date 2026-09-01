@@ -33,7 +33,7 @@ export function DarkModeProvider({ children }: { children: ReactNode }) {
     // Keeps the iOS status bar tint in step with the theme.
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', isDark ? '#0b0f0e' : '#faf9f7');
+      ?.setAttribute('content', isDark ? '#0f1113' : '#faf8f5');
   }, [isDark]);
 
   // Follow the system setting until the user makes an explicit choice.

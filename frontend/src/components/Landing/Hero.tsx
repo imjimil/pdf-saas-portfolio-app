@@ -11,10 +11,11 @@ const TRUST: Array<{ icon: LucideIcon; label: string }> = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pb-16 pt-10 sm:pb-24 sm:pt-16">
+    <section className="relative overflow-hidden pb-14 pt-8 sm:pb-24 sm:pt-16">
+      {/* Warm paper grain, not a coloured glow blob. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[-18rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-brand-500/[0.13] blur-[120px] dark:bg-brand-500/[0.16]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(26,28,31,0.04),transparent_60%)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(255,255,255,0.04),transparent_60%)]"
       />
 
       <div className="relative mx-auto max-w-[68rem] px-4 sm:px-6">
@@ -27,7 +28,7 @@ export function Hero() {
             <h1 className="text-display-sm sm:text-display-md lg:text-display-lg">
               Fix a PDF without
               <br className="hidden sm:block" />{' '}
-              <em className="italic text-brand-700 dark:text-brand-400">
+              <em className="italic text-stamp-600 dark:text-stamp-400">
                 handing it to anyone.
               </em>
             </h1>
@@ -41,7 +42,7 @@ export function Hero() {
             <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5">
               {TRUST.map(({ icon: Icon, label }) => (
                 <li key={label} className="flex items-center gap-2 text-[13px] text-muted">
-                  <Icon size={15} className="text-brand-600 dark:text-brand-400" aria-hidden />
+                  <Icon size={15} className="text-ink-soft dark:text-sand-300" aria-hidden />
                   {label}
                 </li>
               ))}

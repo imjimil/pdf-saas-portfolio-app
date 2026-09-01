@@ -13,14 +13,14 @@ export function Logo({
 }) {
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
-      <span className="relative grid h-8 w-8 place-items-center rounded-[0.6rem] bg-brand-600 shadow-glow">
+      <span className="relative grid h-8 w-8 place-items-center rounded-[0.6rem] bg-ink shadow-lifted dark:bg-sand-100">
         <svg
           width="17"
           height="17"
           viewBox="0 0 20 20"
           fill="none"
           aria-hidden="true"
-          className="text-white"
+          className="text-white dark:text-ink"
         >
           <path
             d="M5 2.5h6.5L16 7v10.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1Z"

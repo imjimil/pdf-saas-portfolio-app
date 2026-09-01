@@ -1,24 +1,19 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, LayoutGrid, Clock, User, LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { ToolSheet } from './ToolSheet';
 import { cn } from '../lib/cn';
 
 /**
- * Mobile bottom tab bar, modelled on the iOS pattern: a translucent bar pinned
- * above the home indicator holding the app's top-level destinations.
- *
- * This also fixes a real regression — the old hamburger menu hid every tool
- * from signed-out visitors on mobile, so guests literally could not reach the
- * product from their phone.
+ * Floating navigation pill — compact, elevated, with a single sliding highlight
+ * behind the active tab. Icons only so every slot stays the same width; labels
+ * live in aria-label for screen readers. Tools goes straight to /tools.
  */
 
 interface Tab {
   label: string;
   icon: LucideIcon;
-  to?: string;
-  action?: 'tools';
+  to: string;
   match: (pathname: string) => boolean;
 }
 
@@ -35,91 +30,93 @@ const TOOL_PATHS = new Set([
   '/pdf-ocr',
   '/watermark-pdf',
   '/protect-pdf',
+  '/unlock-pdf',
 ]);
 
 export function TabBar() {
-  const [toolsOpen, setToolsOpen] = useState(false);
   const { pathname } = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const tabs: Tab[] = [
-    { label: 'Home', icon: Home, to: '/', match: (path) => path === '/' },
-    {
-      label: 'Tools',
-      icon: LayoutGrid,
-      action: 'tools',
-      match: (path) => TOOL_PATHS.has(path),
-    },
-    {
-      label: 'Activity',
-      icon: Clock,
-      to: isAuthenticated ? '/my-dashboard' : '/login',
-      match: (path) => path === '/my-dashboard',
-    },
-    {
-      label: isAuthenticated ? 'Account' : 'Sign in',
-      icon: User,
-      to: isAuthenticated ? '/profile' : '/login',
-      match: (path) => path === '/profile' || path === '/login' || path === '/register',
-    },
-  ];
+  const tabs: Tab[] = useMemo(
+    () => [
+      { label: 'Home', icon: Home, to: '/', match: (path) => path === '/' },
+      {
+        label: 'Tools',
+        icon: LayoutGrid,
+        to: '/tools',
+        match: (path) => TOOL_PATHS.has(path),
+      },
+      {
+        label: 'Activity',
+        icon: Clock,
+        to: isAuthenticated ? '/my-dashboard' : '/login',
+        match: (path) => path === '/my-dashboard',
+      },
+      {
+        label: isAuthenticated ? 'Account' : 'Sign in',
+        icon: User,
+        to: isAuthenticated ? '/profile' : '/login',
+        match: (path) =>
+          path === '/profile' || path === '/login' || path === '/register',
+      },
+    ],
+    [isAuthenticated]
+  );
+
+  const activeIndex = tabs.findIndex((tab) => tab.match(pathname));
 
   return (
-    <>
-      <ToolSheet open={toolsOpen} onClose={() => setToolsOpen(false)} />
-
-      <nav
-        aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t hairline surface-glass pb-safe md:hidden"
+    <nav
+      aria-label="Primary"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:hidden"
+    >
+      <div
+        role="tablist"
+        className="nav-pill pointer-events-auto relative mx-auto grid h-[3.375rem] w-full max-w-[20.5rem] grid-cols-4 items-stretch rounded-full p-1"
       >
-        <ul className="grid h-[4.25rem] grid-cols-4">
-          {tabs.map((tab) => {
-            const active = tab.match(pathname);
-            const Icon = tab.icon;
+        {activeIndex >= 0 && (
+          <div
+            aria-hidden
+            className="nav-pill-indicator absolute inset-y-1 rounded-[1.125rem] transition-[transform] duration-300 ease-ios motion-reduce:transition-none"
+            style={{
+              width: 'calc((100% - 8px) / 4)',
+              transform: `translateX(calc(${activeIndex} * 100%))`,
+            }}
+          />
+        )}
 
-            const inner = (
-              <span
+        {tabs.map((tab) => {
+          const active = tab.match(pathname);
+          const Icon = tab.icon;
+
+          return (
+            <Link
+              key={tab.label}
+              to={tab.to}
+              role="tab"
+              aria-label={tab.label}
+              aria-current={active ? 'page' : undefined}
+              aria-selected={active}
+              className={cn(
+                'relative z-10 flex items-center justify-center rounded-full',
+                'transition-colors duration-200 ease-ios active:scale-[0.92] motion-reduce:active:scale-100'
+              )}
+            >
+              <Icon
+                size={22}
+                strokeWidth={active ? 2.25 : 1.75}
+                aria-hidden
                 className={cn(
-                  'flex h-full flex-col items-center justify-center gap-1 transition-colors duration-200',
-                  active ? 'text-brand-600 dark:text-brand-400' : 'text-ink-muted'
+                  'transition-colors duration-200',
+                  active
+                    ? 'text-brand-600 dark:text-brand-300'
+                    : 'text-ink-muted dark:text-sand-500'
                 )}
-              >
-                <Icon
-                  size={22}
-                  strokeWidth={active ? 2.3 : 1.9}
-                  aria-hidden
-                  className="transition-transform duration-200 ease-spring active:scale-90"
-                />
-                <span className="text-[10.5px] font-medium tracking-tight">{tab.label}</span>
-              </span>
-            );
-
-            return (
-              <li key={tab.label} className="contents">
-                {tab.action === 'tools' ? (
-                  <button
-                    type="button"
-                    onClick={() => setToolsOpen(true)}
-                    aria-expanded={toolsOpen}
-                    aria-current={active ? 'page' : undefined}
-                    className="tap-target"
-                  >
-                    {inner}
-                  </button>
-                ) : (
-                  <Link
-                    to={tab.to!}
-                    aria-current={active ? 'page' : undefined}
-                    className="tap-target"
-                  >
-                    {inner}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-    </>
+              />
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

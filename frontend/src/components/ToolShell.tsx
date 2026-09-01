@@ -56,7 +56,7 @@ export function ToolShell({
       </Link>
 
       <header className="mb-7 flex items-start gap-3.5">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-sand-200/80 text-ink-soft dark:bg-white/[0.08] dark:text-sand-200">
           <Icon size={23} aria-hidden />
         </span>
         <div className="min-w-0 pt-0.5">

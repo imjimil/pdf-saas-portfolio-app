@@ -5,46 +5,49 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand: a deep, slightly desaturated jade. Reads as considered rather
-        // than the neon emerald every template ships with.
+        // Fountain-pen ink: cool navy anchored in document/product context.
+        // Deliberately outside the 200–290 blue-indigo-violet AI band and not
+        // the startup-green every PDF template ships with.
         brand: {
-          50: '#f0fdf6',
-          100: '#dcfce9',
-          200: '#bbf7d4',
-          300: '#86efb5',
-          400: '#4ade8f',
-          500: '#1fa971',
-          600: '#12855b',
-          700: '#106a4b',
-          800: '#12543e',
-          900: '#114535',
-          950: '#04271d',
+          50: '#f2f5f9',
+          100: '#e3eaf2',
+          200: '#c5d2e1',
+          300: '#9aafc6',
+          400: '#6a86a3',
+          500: '#4a6580',
+          600: '#334d66',
+          700: '#2a4054',
+          800: '#243545',
+          900: '#1f2d3a',
+          950: '#141c26',
         },
-        // Warm neutrals instead of Tailwind's cold grays; pairs with the jade
-        // and keeps the "paper" feel of a document product.
+        // Rubber-stamp terracotta — one sharp accent, used sparingly.
+        stamp: {
+          400: '#d4846a',
+          500: '#b85e42',
+          600: '#9a4d36',
+        },
         sand: {
-          50: '#faf9f7',
-          100: '#f4f2ee',
-          200: '#e9e5de',
-          300: '#d8d2c7',
-          400: '#b5aca0',
-          500: '#8f867a',
-          600: '#6f6860',
-          700: '#575149',
-          800: '#3a3631',
-          900: '#242220',
-          950: '#151412',
+          50: '#faf8f5',
+          100: '#f3f0ea',
+          200: '#e8e3da',
+          300: '#d6cfc3',
+          400: '#b3a99a',
+          500: '#8c8275',
+          600: '#6d655b',
+          700: '#564f47',
+          800: '#3a3530',
+          900: '#24211e',
+          950: '#151311',
         },
         ink: {
-          DEFAULT: '#141715',
-          soft: '#3d423f',
-          muted: '#6b716d',
+          DEFAULT: '#1a1c1f',
+          soft: '#3a3f45',
+          muted: '#6a7179',
+          faint: '#9aa1a8',
         },
       },
       fontFamily: {
-        // The platform UI font: SF Pro on Apple devices, Segoe on Windows. It
-        // makes the app feel native next to iOS rather than like a web page
-        // wearing a webfont, and costs nothing to load.
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',
@@ -55,14 +58,9 @@ export default {
           'Arial',
           'sans-serif',
         ],
-        // An editorial serif for headings. A document product earns the print
-        // reference, and it is the clearest signal that the type was chosen.
         display: ['Instrument Serif', 'Iowan Old Style', 'Palatino', 'Georgia', 'serif'],
       },
       fontSize: {
-        // Display sizes carry their own tracking and leading so headings never
-        // need per-use overrides. Serifs need far less negative tracking than a
-        // grotesque; over-tightening closes up the letterforms.
         'display-xs': ['1.875rem', { lineHeight: '1.15', letterSpacing: '-0.008em' }],
         'display-sm': ['2.5rem', { lineHeight: '1.08', letterSpacing: '-0.01em' }],
         'display-md': ['3.375rem', { lineHeight: '1.03', letterSpacing: '-0.014em' }],
@@ -70,30 +68,28 @@ export default {
         'display-xl': ['5.25rem', { lineHeight: '0.95', letterSpacing: '-0.022em' }],
       },
       borderRadius: {
-        // iOS-style continuous curvature: generous radii on large surfaces.
         xl: '0.875rem',
         '2xl': '1.125rem',
         '3xl': '1.5rem',
         '4xl': '2rem',
       },
       boxShadow: {
-        card: '0 1px 2px rgba(20, 23, 21, 0.04), 0 4px 16px -4px rgba(20, 23, 21, 0.06)',
-        lifted: '0 2px 4px rgba(20, 23, 21, 0.04), 0 12px 32px -8px rgba(20, 23, 21, 0.12)',
-        float: '0 8px 40px -12px rgba(20, 23, 21, 0.22)',
-        glow: '0 0 0 1px rgba(31, 169, 113, 0.16), 0 8px 28px -8px rgba(31, 169, 113, 0.32)',
-        'inner-hair': 'inset 0 0 0 1px rgba(20, 23, 21, 0.06)',
+        card: '0 1px 2px rgba(26, 28, 31, 0.04), 0 4px 16px -4px rgba(26, 28, 31, 0.06)',
+        lifted: '0 2px 4px rgba(26, 28, 31, 0.05), 0 12px 32px -8px rgba(26, 28, 31, 0.1)',
+        float: '0 4px 24px -4px rgba(26, 28, 31, 0.14), 0 12px 40px -12px rgba(26, 28, 31, 0.18)',
+        pill: '0 2px 16px -2px rgba(26, 28, 31, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.55)',
+        'inner-hair': 'inset 0 0 0 1px rgba(26, 28, 31, 0.06)',
       },
       spacing: {
-        // Respect the iPhone home indicator and notch.
         safe: 'env(safe-area-inset-bottom, 0px)',
         'safe-top': 'env(safe-area-inset-top, 0px)',
-        'tabbar': '4.25rem',
+        // Floating pill height + side margin + safe area.
+        tabbar: '4.75rem',
       },
       backdropBlur: {
-        ios: '20px',
+        ios: '24px',
       },
       transitionTimingFunction: {
-        // Apple's standard easing plus a subtle overshoot for entrances.
         ios: 'cubic-bezier(0.32, 0.72, 0, 1)',
         spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },

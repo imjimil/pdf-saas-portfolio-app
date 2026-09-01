@@ -8,6 +8,22 @@ import { Logo } from './ui/Logo';
 import { Button, ButtonLink } from './ui/Button';
 import { cn } from '../lib/cn';
 
+const TOOL_PATHS = new Set([
+  '/tools',
+  '/pdf-to-word',
+  '/word-to-pdf',
+  '/image-to-pdf',
+  '/pdf-to-text',
+  '/pdf-to-epub',
+  '/merge-pdf',
+  '/split-pdf',
+  '/compress-pdf',
+  '/pdf-ocr',
+  '/watermark-pdf',
+  '/protect-pdf',
+  '/unlock-pdf',
+]);
+
 /**
  * Top bar.
  *
@@ -90,7 +106,19 @@ export function Navigation() {
           <NavLink to="/contact">Contact</NavLink>
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1">
+          <Link
+            to="/tools"
+            className={cn(
+              'tap-target inline-flex h-9 items-center rounded-full px-3 text-[14px] font-medium md:hidden',
+              TOOL_PATHS.has(location.pathname)
+                ? 'text-brand-600 dark:text-brand-400'
+                : 'text-ink-soft dark:text-sand-300'
+            )}
+          >
+            Tools
+          </Link>
+
           <button
             type="button"
             onClick={toggleDarkMode}

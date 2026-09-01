@@ -48,7 +48,7 @@ export function Steps() {
               >
                 <span
                   aria-hidden
-                  className="font-display text-[2.25rem] leading-none text-brand-600/35 dark:text-brand-400/40"
+                  className="font-display text-[2.25rem] leading-none text-brand-600/30 dark:text-brand-400/35"
                 >
                   {index + 1}
                 </span>

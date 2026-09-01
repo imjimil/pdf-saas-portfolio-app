@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Search, SearchX, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronRight, Search, SearchX, ShieldCheck } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/Button';
 import { CATEGORY_LABELS, Tool, toolsByCategory } from '../lib/tools';
@@ -93,10 +93,15 @@ export default function Tools() {
                 >
                   {CATEGORY_LABELS[group.category]}
                 </h2>
-                <div className="mt-3.5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                <div className="mt-1 md:mt-3.5">
                   {group.tools.map((tool) => (
-                    <ToolCard key={tool.id} tool={tool} />
+                    <ToolRow key={`row-${tool.id}`} tool={tool} />
                   ))}
+                  <div className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                    {group.tools.map((tool) => (
+                      <ToolCard key={`card-${tool.id}`} tool={tool} />
+                    ))}
+                  </div>
                 </div>
               </section>
             ))}
@@ -113,6 +118,36 @@ export default function Tools() {
   );
 }
 
+function ToolRow({ tool }: { tool: Tool }) {
+  const Icon = tool.icon;
+
+  return (
+    <Link to={tool.path} className="tool-row group sm:hidden">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sand-200/70 text-ink-soft dark:bg-white/[0.07] dark:text-sand-200">
+        <Icon size={18} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="truncate text-[15.5px] font-medium text-ink dark:text-sand-100">
+            {tool.name}
+          </span>
+          {tool.badge && (
+            <span className="shrink-0 rounded-full bg-stamp-500/12 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-stamp-600 dark:text-stamp-400">
+              {tool.badge}
+            </span>
+          )}
+        </span>
+        <span className="mt-0.5 line-clamp-1 text-[13px] text-muted">{tool.summary}</span>
+      </span>
+      <ChevronRight
+        size={17}
+        className="shrink-0 text-ink-faint transition-transform group-active:translate-x-0.5"
+        aria-hidden
+      />
+    </Link>
+  );
+}
+
 function ToolCard({ tool }: { tool: Tool }) {
   const Icon = tool.icon;
 
@@ -122,14 +157,14 @@ function ToolCard({ tool }: { tool: Tool }) {
       className="card group flex flex-col p-5 transition-[transform,box-shadow] duration-200 ease-ios
                  hover:-translate-y-0.5 hover:shadow-lifted"
     >
-      <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+      <span className="grid h-11 w-11 place-items-center rounded-xl bg-sand-200/80 text-ink-soft dark:bg-white/[0.08] dark:text-sand-200">
         <Icon size={21} aria-hidden />
       </span>
 
       <h3 className="mt-3.5 flex flex-wrap items-center gap-2 text-[16px] font-semibold">
         {tool.name}
         {tool.badge && (
-          <span className="rounded-full bg-brand-500/12 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
+          <span className="rounded-full bg-stamp-500/12 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-stamp-600 dark:text-stamp-400">
             {tool.badge}
           </span>
         )}

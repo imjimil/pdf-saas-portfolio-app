@@ -11,9 +11,13 @@ export default function Landing() {
   return (
     <AppShell footer={<Footer />}>
       <Hero />
-      <ToolGrid />
+      <div className="section-band">
+        <ToolGrid />
+      </div>
       <Steps />
-      <Privacy />
+      <div className="section-band">
+        <Privacy />
+      </div>
       <FAQ />
       <CTA />
     </AppShell>

@@ -4,14 +4,14 @@
 
 @layer base {
   :root {
-    --surface: 250 249 247;
+    --surface: 250 248 245;
     --surface-raised: 255 255 255;
-    --border-hair: 20 23 21 / 0.08;
+    --border-hair: 26 28 31 / 0.08;
   }
 
   .dark {
-    --surface: 11 15 14;
-    --surface-raised: 23 28 26;
+    --surface: 15 17 19;
+    --surface-raised: 24 27 30;
     --border-hair: 255 255 255 / 0.1;
   }
 
@@ -22,7 +22,7 @@
   }
 
   body {
-    @apply bg-sand-50 text-ink antialiased dark:bg-[#0b0f0e] dark:text-sand-100;
+    @apply bg-sand-50 text-ink antialiased dark:bg-[#0f1113] dark:text-sand-100;
     font-family: theme('fontFamily.sans');
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
@@ -40,11 +40,11 @@
 
   /* A single visible focus treatment across the whole app. */
   :focus-visible {
-    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-sand-50 dark:ring-offset-[#0b0f0e];
+    @apply outline-none ring-2 ring-brand-600 ring-offset-2 ring-offset-sand-50 dark:ring-offset-[#0f1113];
   }
 
   ::selection {
-    @apply bg-brand-500/20;
+    @apply bg-brand-600/20;
   }
 
   /* Honour the OS "reduce motion" setting instead of animating regardless. */
@@ -71,15 +71,37 @@
 
   /* The frosted material used by the top bar, tab bar and sheets. */
   .surface-glass {
-    @apply bg-sand-50/80 backdrop-blur-ios backdrop-saturate-150 dark:bg-[#0b0f0e]/80;
+    @apply bg-sand-50/90 backdrop-blur-ios backdrop-saturate-150 dark:bg-[#0f1113]/90;
   }
 
   .card {
     @apply rounded-2xl border border-ink/[0.07] bg-white shadow-card dark:border-white/[0.08] dark:bg-white/[0.04];
   }
 
+  /* Alternating section bands break up large whitespace on desktop without
+     shrinking padding — the tone shift gives the eye somewhere to land. */
+  .section-band {
+    @apply bg-sand-100/55 dark:bg-white/[0.02];
+  }
+
+  /* Compact mobile tool row — reads like Settings, not a marketing card. */
+  .tool-row {
+    @apply flex items-center gap-3.5 border-b border-ink/[0.06] py-3.5 transition-colors
+           active:bg-ink/[0.03] dark:border-white/[0.07] dark:active:bg-white/[0.04];
+  }
+
   .hairline {
     @apply border-ink/[0.07] dark:border-white/[0.08];
+  }
+
+  /* Floating bottom nav — frosted capsule that sits above the home indicator. */
+  .nav-pill {
+    @apply border border-ink/[0.05] bg-white/[0.88] shadow-float backdrop-blur-ios backdrop-saturate-[180%]
+           dark:border-white/[0.07] dark:bg-[#1a1d21]/[0.88];
+  }
+
+  .nav-pill-indicator {
+    @apply left-1 bg-sand-200/90 shadow-inner-hair dark:bg-white/[0.11];
   }
 
   /* Every interactive control is at least 44px tall — Apple's touch minimum. */
@@ -109,9 +131,9 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  /* Reserves room for the mobile tab bar so content is never hidden behind it. */
+  /* Floating pill height + side margin + safe area. */
   .pb-tabbar {
-    padding-bottom: calc(theme('spacing.tabbar') + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(3.375rem + 1.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   .no-scrollbar::-webkit-scrollbar {
