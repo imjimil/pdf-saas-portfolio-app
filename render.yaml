@@ -1,15 +1,16 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# The backend runs as a Docker image because high-fidelity PDF work needs real
-# document engines (LibreOffice, Ghostscript, qpdf, Poppler, Tesseract) that do
-# not exist in Render's plain Node runtime.
+# Runs as plain Node (no Docker). PDF tools use npm libraries:
+# @cantoo/pdf-lib, pdfjs-dist, docx, mammoth, sharp — all work on the free tier.
+# Optional SMTP env vars forward contact form messages to your inbox.
 services:
   - type: web
     name: mypdftools-api
-    runtime: docker
+    runtime: node
     rootDir: backend
-    dockerfilePath: ./Dockerfile
-    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    plan: free
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -32,3 +33,13 @@ services:
         sync: false
       - key: MAX_UPLOAD_MB
         value: "50"
+      - key: CONTACT_TO_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false

@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Mail, ExternalLink, Info } from 'lucide-react';
+import { Mail, Send, CheckCircle2 } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiError, contactAPI } from '../services/api';
 
 const SUPPORT_EMAIL = 'jprajapati2014@gmail.com';
 
@@ -25,8 +28,16 @@ interface ContactValues {
 }
 
 export default function Contact() {
+  const { user } = useAuth();
+  const [sent, setSent] = useState(false);
+
   const formik = useFormik<ContactValues>({
-    initialValues: { name: '', email: '', message: '' },
+    initialValues: {
+      name: user?.name ?? '',
+      email: user?.email ?? '',
+      message: '',
+    },
+    enableReinitialize: true,
     validationSchema: Yup.object({
       name: Yup.string().trim().required('Please tell us your name'),
       email: Yup.string().email('Enter a valid email address').required('Email is required'),
@@ -35,9 +46,20 @@ export default function Contact() {
         .min(10, 'A little more detail helps us answer properly')
         .required('Please write a message'),
     }),
-    onSubmit: (values) => {
-      window.location.href = buildMailto(values);
-      toast.info('Opening your email app', `The message is addressed to ${SUPPORT_EMAIL}.`);
+    onSubmit: async (values, helpers) => {
+      try {
+        const response = await contactAPI.send(values);
+        setSent(true);
+        helpers.resetForm({ values: { ...values, message: '' } });
+        toast.success('Message sent', response.message);
+      } catch (error) {
+        toast.error(
+          error instanceof ApiError ? error.message : 'Could not send your message.',
+          error instanceof ApiError ? error.hint : undefined
+        );
+      } finally {
+        helpers.setSubmitting(false);
+      }
     },
   });
 
@@ -75,14 +97,27 @@ export default function Contact() {
             Write a message
           </h2>
 
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-ink/[0.03] p-3 dark:bg-white/[0.05]">
-            <Info size={15} className="mt-0.5 shrink-0 text-ink-muted dark:text-sand-400" aria-hidden />
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-brand-500/8 p-3 dark:bg-brand-500/10">
+            <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden />
             <p className="text-[13px] leading-relaxed text-muted text-pretty">
-              This form has no server behind it. Filling it in and pressing the button opens your
-              own email app with the message ready to send — nothing leaves this page, and nothing
-              is stored.
+              Messages are stored securely and emailed to us when SMTP is configured. We usually
+              reply within a couple of days.
             </p>
           </div>
+
+          {sent ? (
+            <div
+              role="status"
+              className="mt-5 rounded-xl border border-brand-200 bg-brand-50/80 p-4 dark:border-brand-500/25 dark:bg-brand-500/10"
+            >
+              <p className="text-[14px] font-medium text-brand-800 dark:text-brand-200">
+                Thanks — your message is on its way.
+              </p>
+              <p className="mt-1 text-[13px] text-brand-700/80 dark:text-brand-300/80">
+                We will reply to the email address you gave us.
+              </p>
+            </div>
+          ) : null}
 
           <form className="mt-5 space-y-4" onSubmit={formik.handleSubmit} noValidate>
             <div>
@@ -169,8 +204,14 @@ export default function Contact() {
               )}
             </div>
 
-            <Button type="submit" size="lg" icon={ExternalLink} fullWidth>
-              Open in my email app
+            <Button
+              type="submit"
+              size="lg"
+              icon={Send}
+              fullWidth
+              loading={formik.isSubmitting}
+            >
+              Send message
             </Button>
           </form>
         </section>
@@ -231,10 +272,3 @@ function FaqItem({ question, children }: { question: string; children: React.Rea
   );
 }
 
-function buildMailto({ name, email, message }: ContactValues): string {
-  const subject = `Mypdftools — message from ${name.trim()}`;
-  const body = `${message.trim()}\n\n—\n${name.trim()}\n${email.trim()}`;
-  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(body)}`;
-}

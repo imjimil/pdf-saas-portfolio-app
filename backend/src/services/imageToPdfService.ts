@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import sharp from 'sharp';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { AppError, toAppError } from '../lib/errors';
 
 /**

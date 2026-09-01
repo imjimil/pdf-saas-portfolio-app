@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import mammoth from 'mammoth';
-import { PDFDocument, StandardFonts, rgb, PDFFont } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFFont } from '@cantoo/pdf-lib';
 import { AppError, toAppError } from '../lib/errors';
 import * as libreoffice from './engines/libreoffice';
 

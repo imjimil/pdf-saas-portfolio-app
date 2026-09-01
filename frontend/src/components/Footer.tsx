@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Logo } from './ui/Logo';
 import { getTool, type Tool } from '../lib/tools';
+import { useAuth } from '../contexts/AuthContext';
 
 const FEATURED_TOOL_IDS = [
   'pdf-to-word',
@@ -44,6 +45,18 @@ function Column({
 }
 
 export function Footer() {
+  const { isAuthenticated } = useAuth();
+
+  const accountLinks = isAuthenticated
+    ? [
+        { label: 'Your activity', to: '/my-dashboard' },
+        { label: 'Account', to: '/profile' },
+      ]
+    : [
+        { label: 'Sign in', to: '/login' },
+        { label: 'Create account', to: '/register' },
+      ];
+
   return (
     <footer className="hairline border-t pb-tabbar md:pb-0">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
@@ -74,13 +87,7 @@ export function Footer() {
             ]}
           />
 
-          <Column
-            heading="Account"
-            links={[
-              { label: 'Sign in', to: '/login' },
-              { label: 'Create account', to: '/register' },
-            ]}
-          />
+          <Column heading="Account" links={accountLinks} />
         </div>
 
         <div className="hairline mt-12 border-t pt-6">

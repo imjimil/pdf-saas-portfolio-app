@@ -85,7 +85,7 @@ export async function ocrPdfToSearchablePdf(
   }
 
   // Combine per-page PDFs with pdf-lib so no extra engine is required here.
-  const { PDFDocument } = await import('pdf-lib');
+  const { PDFDocument } = await import('@cantoo/pdf-lib');
   const merged = await PDFDocument.create();
   for (const pagePdf of pagePdfs) {
     const bytes = await fs.readFile(pagePdf);

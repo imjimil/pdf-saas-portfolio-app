@@ -58,6 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    const onLogout = () => {
+      setUser(null);
+      setToken(null);
+    };
+
+    window.addEventListener('auth:logout', onLogout);
+    return () => window.removeEventListener('auth:logout', onLogout);
+  }, []);
+
   // Keeps multiple tabs consistent when the user signs out in one of them.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {

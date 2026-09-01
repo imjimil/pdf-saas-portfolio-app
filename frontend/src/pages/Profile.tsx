@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { AlertTriangle, KeyRound, Mail, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { AlertTriangle, KeyRound, LogOut, Mail, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
@@ -91,6 +91,12 @@ export default function Profile() {
       }
     },
   });
+
+  const handleSignOut = () => {
+    logout();
+    toast.success('Signed out');
+    navigate('/', { replace: true });
+  };
 
   const handleDeleteAccount = async () => {
     setDeleting(true);
@@ -310,6 +316,21 @@ export default function Profile() {
                 </form>
               </section>
             )}
+
+            <section className="card p-5 sm:p-6" aria-labelledby="sign-out">
+              <h2 id="sign-out" className="flex items-center gap-2 text-[16px] font-semibold">
+                <LogOut size={17} aria-hidden className="text-ink-muted dark:text-sand-400" />
+                Sign out
+              </h2>
+              <p className="mt-1 text-[14px] text-muted">
+                End your session on this device. Your account and activity log stay saved.
+              </p>
+              <div className="mt-4">
+                <Button variant="secondary" icon={LogOut} onClick={handleSignOut}>
+                  Sign out
+                </Button>
+              </div>
+            </section>
 
             <section
               className="rounded-2xl border border-red-200 bg-red-50/60 p-5 dark:border-red-500/25 dark:bg-red-500/[0.07] sm:p-6"

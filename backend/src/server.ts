@@ -14,6 +14,7 @@ import session from 'express-session';
 import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdf';
 import fileRoutes from './routes/files';
+import contactRoutes from './routes/contact';
 import analyticsRoutes from './routes/analytics';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logCapabilities, getCapabilities } from './lib/binaries';
@@ -103,7 +104,19 @@ const authLimiter = rateLimit({
   },
 });
 
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isProduction ? 5 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: 'You have sent several messages recently. Please try again later.',
+    code: 'RATE_LIMITED',
+  },
+});
+
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/contact', contactLimiter, contactRoutes);
 app.use('/api/pdf', conversionLimiter, pdfRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);

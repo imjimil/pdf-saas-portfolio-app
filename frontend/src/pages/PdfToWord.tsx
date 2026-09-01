@@ -49,6 +49,11 @@ export default function PdfToWord() {
         }
       >
         <Dropzone accept={tool.accept} files={files} onChange={setFiles} />
+        <p className="mx-auto mt-4 flex max-w-md items-start gap-2 text-[13px] text-muted text-pretty">
+          <Info size={15} className="mt-0.5 shrink-0" aria-hidden />
+          Converts selectable text into an editable Word file. Scanned PDFs need OCR first;
+          complex layouts may need tidying after conversion.
+        </p>
       </ToolShell>
     </AppShell>
   );

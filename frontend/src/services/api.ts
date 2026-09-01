@@ -25,6 +25,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !onAuthPage) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth:logout'));
     }
     return Promise.reject(error);
   }
@@ -281,6 +282,20 @@ export const analyticsAPI = {
   getUsage: async (days = 30) => (await api.get(`/analytics/usage?days=${days}`)).data,
   getOperations: async (days = 30) =>
     (await api.get(`/analytics/operations?days=${days}`)).data,
+};
+
+export const contactAPI = {
+  send: async (payload: { name: string; email: string; message: string }) => {
+    try {
+      return (await api.post('/contact', payload)).data as {
+        ok: boolean;
+        emailed: boolean;
+        message: string;
+      };
+    } catch (error) {
+      throw await toApiError(error);
+    }
+  },
 };
 
 /** Triggers a browser download for a blob returned by a tool. */

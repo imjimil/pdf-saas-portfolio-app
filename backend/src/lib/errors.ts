@@ -11,7 +11,8 @@ export type AppErrorCode =
   | 'ENGINE_UNAVAILABLE'
   | 'TIMEOUT'
   | 'TOO_LARGE'
-  | 'PROCESSING_FAILED';
+  | 'PROCESSING_FAILED'
+  | 'SERVICE_UNAVAILABLE';
 
 const STATUS_BY_CODE: Record<AppErrorCode, number> = {
   INVALID_INPUT: 400,
@@ -23,6 +24,7 @@ const STATUS_BY_CODE: Record<AppErrorCode, number> = {
   TIMEOUT: 504,
   TOO_LARGE: 413,
   PROCESSING_FAILED: 500,
+  SERVICE_UNAVAILABLE: 503,
 };
 
 export class AppError extends Error {

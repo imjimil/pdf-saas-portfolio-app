@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
 import archiver from 'archiver';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { AppError, toAppError } from '../lib/errors';
 import { loadPdf, parsePageRanges, rangesToIndices, PageRange } from '../lib/pdf';
 

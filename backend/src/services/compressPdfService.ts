@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { AppError, toAppError } from '../lib/errors';
 import { loadPdf } from '../lib/pdf';
 import * as ghostscript from './engines/ghostscript';

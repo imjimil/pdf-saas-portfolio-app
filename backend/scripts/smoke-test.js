@@ -2,7 +2,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb } = require('@cantoo/pdf-lib');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel } = require('docx');
 const sharp = require('sharp');
 
