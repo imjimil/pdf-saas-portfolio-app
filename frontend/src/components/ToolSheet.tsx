@@ -61,7 +61,8 @@ export function ToolSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 md:absolute md:inset-auto md:left-1/2 md:top-full md:z-40 md:mt-2 md:-translate-x-1/2"
+      className="fixed inset-0 z-50 md:inset-auto md:left-0 md:right-0 md:top-[4.5rem] md:z-40
+                 md:flex md:justify-center md:pointer-events-none"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a tool"
@@ -78,7 +79,7 @@ export function ToolSheet({
         className={cn(
           'absolute inset-x-0 bottom-0 max-h-[86vh] overflow-y-auto rounded-t-3xl border-t hairline',
           'bg-white pb-safe shadow-float animate-slide-up dark:bg-[#141917]',
-          'md:static md:max-h-[70vh] md:w-[min(46rem,90vw)] md:rounded-3xl md:border md:animate-scale-in'
+          'md:static md:pointer-events-auto md:max-h-[70vh] md:w-[min(46rem,calc(100vw-2rem))] md:rounded-3xl md:border md:animate-scale-in'
         )}
       >
         {/* Grab handle: the standard affordance for a dismissable iOS sheet. */}

@@ -52,8 +52,8 @@ app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Mypdftools API is running' });
+app.get('/api/health', (_req, res) => {
+  res.sendStatus(200);
 });
 
 // Error handling middleware (must be last)

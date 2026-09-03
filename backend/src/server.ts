@@ -17,7 +17,7 @@ import fileRoutes from './routes/files';
 import contactRoutes from './routes/contact';
 import analyticsRoutes from './routes/analytics';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { logCapabilities, getCapabilities } from './lib/binaries';
+import { logCapabilities } from './lib/binaries';
 import { SESSION_SECRET } from './lib/config';
 import { sweepStaleWorkspaces } from './lib/workspace';
 
@@ -121,14 +121,8 @@ app.use('/api/pdf', conversionLimiter, pdfRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-app.get('/api/health', async (_req, res) => {
-  const capabilities = await getCapabilities();
-  res.json({
-    status: 'ok',
-    message: 'Mypdftools API is running',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    capabilities,
-  });
+app.get('/api/health', (_req, res) => {
+  res.sendStatus(200);
 });
 
 app.get('/', (_req, res) => {
